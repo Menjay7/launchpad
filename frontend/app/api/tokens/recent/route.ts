@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { NETWORKS, type NetworkType } from "@/types/network";
 import { fetchRecentTokens, type RecentToken } from "@/lib/recentTokens";
 
+// NOTE: Any Mercury indexer integration in this route must use the server-only
+// MERCURY_AUTH_TOKEN environment variable (no NEXT_PUBLIC_ prefix). This route
+// runs exclusively on the server — it is the correct place to hold that
+// credential and proxy results to the client. Never pass the token to the
+// client or read it from a NEXT_PUBLIC_ variable.
+
 interface CacheEntry {
   data: RecentToken[];
   expiresAt: number;

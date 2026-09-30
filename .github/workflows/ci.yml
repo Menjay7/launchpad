@@ -202,6 +202,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Reject NEXT_PUBLIC_ credentials in frontend source
+        # NEXT_PUBLIC_* variables are inlined into the client bundle at build
+        # time by Next.js and are visible to anyone with browser devtools.
+        # API keys, auth tokens, and secrets must NEVER use this prefix.
+        # This step fails the build if any such pattern is introduced.
+        # Pattern targets explicit credential suffixes; it does NOT match
+        # NEXT_PUBLIC_TOKEN_WASM_HASH (a public contract identifier) or
+        # similar non-sensitive names.
+        run: |
+          if grep -rn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+            -E 'NEXT_PUBLIC_.*(AUTH_TOKEN|API_KEY|ACCESS_TOKEN|SECRET|PRIVATE_KEY)' .; then
+            echo ""
+            echo "ERROR: Found a NEXT_PUBLIC_*AUTH_TOKEN/API_KEY/SECRET/PRIVATE_KEY in frontend source."
+            echo "NEXT_PUBLIC_* variables are inlined into the client JS bundle"
+            echo "and are readable by anyone with browser devtools."
+            echo "Use a server-only variable (no NEXT_PUBLIC_ prefix) and proxy"
+            echo "results through an API route (app/api/...) instead."
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

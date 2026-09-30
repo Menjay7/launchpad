@@ -1,14 +1,17 @@
-﻿import { type NetworkConfig } from "../types/network";
-import * as StellarSkk from "@stellar/stellar-sdk";
+﻿﻿import { type NetworkConfig } from "../types/network";
+import * as StellarSdk from "@stellar/stellar-sdk";
 
-const DEFAULT_MERCURY_BASE_URL_TESTNET =
-  process.env.NEXT_PUBLIC_MERCURY_TESTNET_URL ??
-  "https://testnet.mercurydata.app/rest";
-const DEFAULT_MERCURY_BASE_URL_MAINNET =
-  process.env.NEXT_PUBLIC_MERCURY_MAINNET_URL ??
-  "https://mainnet.mercurydata.app/rest";
-const DEFAULT_MERCURY_AUTH_TOKEN =
-  process.env.NEXT_PUBLIC_MERCURY_AUTH_TOKEN ?? "";
+// ---------------------------------------------------------------------------
+// Mercury base URLs — read from environment on the server (no NEXT_PUBLIC_
+// prefix). These constants are only used by server-side code in
+// app/api/tokens/recent/route.ts via getMercuryConfig(). Client-side callers
+// (fetchTransactionHistory, fetchAccountOperations) use the RPC fallback path
+// in fetchIndexedEvents and never read these values.
+// ---------------------------------------------------------------------------
+export const MERCURY_BASE_URL_TESTNET =
+  process.env.MERCURY_TESTNET_URL ?? "https://testnet.mercurydata.app/rest";
+export const MERCURY_BASE_URL_MAINNET =
+  process.env.MERCURY_MAINNET_URL ?? "https://mainnet.mercurydata.app/rest";
 
 /**
  * Number of ledgers the RPC fallback window spans when no cursor is supplied.
@@ -41,7 +44,7 @@ export interface IndexedEvent {
   value: unknown;
 }
 
-'��J * Metadata describing the ledger window the events were retrieved from.
+/** * Metadata describing the ledger window the events were retrieved from.
  * When `truncated` is true, the events are only a slice of the contract's
  * history and the UI must say so.
  */
@@ -68,20 +71,31 @@ export interface FetchIndexedEventsResult {
   windowInfo?: LedgerWindowInfo;
 }
 
+/**
+ * Build a Mercury config from server-only environment variables.
+ *
+ * IMPORTANT: Call this only from server-side code (API routes, Server
+ * Components, server actions). The `MERCURY_AUTH_TOKEN` variable has NO
+ * `NEXT_PUBLIC_` prefix intentionally — Next.js must never inline it into
+ * the client bundle.
+ *
+ * Returns null when the token is absent so callers degrade to the RPC path.
+ */
 export function getMercuryConfig(
   config: NetworkConfig,
 ): { baseUrl: string; token: string } | null {
-  const explicitBaseUrl = process.env.NEXT_PUBLIC_MERCURY_BASE_URL;
-  const baseUrl =
-    explicitBaseUrl ?=
-    (config.network === "mainnet"
-      ? DEFAULT_MERCURY_BASE_URL_MAINNET
-      : DEFAULT_MERCURY_BASE_URL_TESTNET);
-  const token = DEFAULT_MERCURY_AUTH_TOKEN;
-
+  // Deliberately NOT NEXT_PUBLIC_ — must remain server-only.
+  const token = process.env.MERCURY_AUTH_TOKEN ?? "";
   if (!token) {
     return null;
   }
+
+  const explicitBaseUrl = process.env.MERCURY_BASE_URL;
+  const baseUrl =
+    explicitBaseUrl ??
+    (config.network === "mainnet"
+      ? MERCURY_BASE_URL_MAINNET
+      : MERCURY_BASE_URL_TESTNET);
 
   return { baseUrl, token };
 }
