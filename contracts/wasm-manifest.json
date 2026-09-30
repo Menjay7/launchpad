@@ -45,6 +45,14 @@
     }
   },
   "factory": {
+    "latest": "v1.0.0",
+    "versions": {
+      "v1.0.0": {
+        "wasm_hash": "",
+        "source_tag": "v1.0.0",
+        "build_ledger": "soroban-sdk-21.0.0"
+      }
+    },
     "deployments": {
       "testnet": {
         "address": "",
@@ -53,6 +61,16 @@
       "mainnet": {
         "address": "",
         "wasm_hash": ""
+      }
+    }
+  },
+  "metadata_registry": {
+    "latest": "v1.0.0",
+    "versions": {
+      "v1.0.0": {
+        "wasm_hash": "",
+        "source_tag": "v1.0.0",
+        "build_ledger": "soroban-sdk-21.0.0"
       }
     }
   }

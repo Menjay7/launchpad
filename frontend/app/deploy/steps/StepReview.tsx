@@ -6,12 +6,17 @@ import * as StellarSdk from "@stellar/stellar-sdk";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Wallet, Zap } from "lucide-react";
+import { LaunchAttestationPanel } from "@/components/ui/LaunchAttestation";
 
 interface StepProps {
     control: Control<DeployFormData>;
     estimatedFee?: string | null;
     feeEstimationLoading?: boolean;
     feeEstimationError?: string | null;
+    /** Pre-generated deploy salt — shown in the attestation panel and used on submit. */
+    salt?: Uint8Array;
+    /** Called with `false` when attestation detects a WASM mismatch. */
+    onAttestationResult?: (ok: boolean) => void;
 }
 
 const formatIntegerString = (value?: string | number) => {
@@ -38,9 +43,12 @@ const FlagItem = ({ label, enabled }: { label: string; enabled: boolean }) => (
     </div>
 );
 
-export const StepReview = ({ control, estimatedFee, feeEstimationLoading, feeEstimationError }: StepProps) => {
+export const StepReview = ({ control, estimatedFee, feeEstimationLoading, feeEstimationError, salt, onAttestationResult }: StepProps) => {
     const formData = useWatch({ control });
     const { publicKey, connect } = useWallet();
+    const { networkConfig } = useNetwork();
+    const factoryAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "";
+    const useLegacy = process.env.NEXT_PUBLIC_USE_LEGACY_DEPLOY === "true";
     const adminModeLabel =
         formData.adminMode === "wallet"
             ? "Connected wallet"
@@ -56,6 +64,22 @@ export const StepReview = ({ control, estimatedFee, feeEstimationLoading, feeEst
             </div>
             {/* Friendbot banner: shows when on testnet and balance is low */}
             <FriendbotBanner threshold={100} />
+
+            {/* WASM Attestation panel — shown only on the factory path */}
+            {!useLegacy && factoryAddress && publicKey && salt && (
+                <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stellar-500 mb-2">
+                        Code Attestation
+                    </h3>
+                    <LaunchAttestationPanel
+                        factoryAddress={factoryAddress}
+                        deployer={publicKey}
+                        salt={salt}
+                        networkConfig={networkConfig}
+                        onResult={onAttestationResult}
+                    />
+                </div>
+            )}
 
             <div className="glass-card p-6 space-y-1">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-stellar-500 mb-4">Configuration Summary</h3>

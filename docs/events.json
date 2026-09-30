@@ -284,6 +284,12 @@
         "note": "Emitted only once the delay has elapsed and the hash actually changed; from this point every `deploy_token` deploys `wasm_hash`."
       },
       {
+        "functions": ["set_metadata_registry"],
+        "topics": ["set_reg"],
+        "data": "registry: Address",
+        "note": "The registry `deploy_token` writes indexed launch records to. Replacing it does not migrate existing records."
+      },
+      {
         "functions": ["deploy_token"],
         "topics": ["deploy", "deployer: Address", "salt: BytesN<32>"],
         "data": "token_address: Address"
@@ -318,6 +324,28 @@
         "functions": ["unpause"],
         "topics": ["unpause"],
         "data": "()"
+      },
+      {
+        "functions": ["upgrade"],
+        "topics": ["upgrade"],
+        "data": "new_wasm_hash: BytesN<32>"
+      }
+    ]
+  },
+  "metadata_registry": {
+    "source": "contracts/metadata-registry/src/lib.rs",
+    "title": "Metadata Registry Contract",
+    "events": [
+      {
+        "functions": ["initialize"],
+        "topics": ["init"],
+        "data": "(admin: Address, factory: Address)"
+      },
+      {
+        "functions": ["register"],
+        "topics": ["register", "token: Address"],
+        "data": "(symbol: String, name_digest: BytesN<32>, creator: Address, launch_ledger: u32, initial_supply: i128, metadata_digest: Option<BytesN<32>>)",
+        "note": "Written by the factory in the same transaction as `deploy_token`. The JSON document is not stored; `metadata_digest` is keccak256 of the JSON the creator supplied."
       },
       {
         "functions": ["upgrade"],

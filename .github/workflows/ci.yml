@@ -86,8 +86,10 @@ jobs:
             manifest_key=""
             case "$name" in
               *airdrop*) manifest_key="airdrop" ;;
+              *metadata*|*registry*) manifest_key="metadata_registry" ;;
               *token*) manifest_key="token" ;;
               *vesting*) manifest_key="vesting" ;;
+              *factory*) manifest_key="factory" ;;
               *) manifest_key="$name" ;;
             esac
 

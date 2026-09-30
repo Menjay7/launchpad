@@ -107,6 +107,8 @@ pub enum DataKey {
     DeploymentCount,
     /// Enumerated token address, index `0..DeploymentCount`.
     DeploymentAt(u32),
+    /// Metadata registry this factory writes to in `deploy_token`.
+    MetadataRegistry,
 }
 
 /// Complete configuration for the token `deploy_token` deploys.
@@ -127,6 +129,15 @@ pub struct TokenConfig {
     pub authorization_required: bool,
     pub authorization_revocable: bool,
     pub compliance_node: Option<Address>,
+    /// Canonical metadata JSON. The factory does not store it; it is hashed
+    /// with keccak256 into the metadata registry in the same transaction as
+    /// the deploy. `None` if the creator supplied nothing to commit to.
+    pub metadata: Option<String>,
+    /// Optional `https://` / `ipfs://` URI passed through to the token's
+    /// `initialize` as `contract_uri` so the document location is on-chain
+    /// in the same transaction. The JSON still lives off-chain; this is
+    /// where to fetch it.
+    pub contract_uri: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +172,8 @@ pub enum FactoryError {
     /// `accept_token_wasm_hash` was called before the proposal's delay
     /// ([`TOKEN_WASM_CHANGE_DELAY_LEDGERS`]) had elapsed.
     WasmChangeNotDue = 11,
+    /// `deploy_token` was called before a metadata registry was configured.
+    MetadataRegistryNotSet = 12,
 }
 
 // ---------------------------------------------------------------------------
@@ -548,6 +561,26 @@ impl FactoryContract {
             .zip(storage.get(&DataKey::PendingTokenWasmEffective))
     }
 
+    /// Point this factory at a metadata registry. Admin only.
+    ///
+    /// Every subsequent `deploy_token` writes the launch's indexed record
+    /// there in the same invocation. Replacing the address does not migrate
+    /// existing records — those stay on the contract they were written to.
+    pub fn set_metadata_registry(env: Env, registry: Address) {
+        Self::_require_admin(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::MetadataRegistry, &registry);
+        Self::_bump_instance(&env);
+        env.events()
+            .publish((symbol_short!("set_reg"),), registry);
+    }
+
+    /// Return the configured metadata registry, if any.
+    pub fn get_metadata_registry(env: Env) -> Option<Address> {
+        env.storage().instance().get(&DataKey::MetadataRegistry)
+    }
+
     // ── Deployment ──────────────────────────────────────────────────────
 
     /// Deploy and initialize a token contract atomically.
@@ -565,9 +598,11 @@ impl FactoryContract {
     /// initialization itself fails, the entire invocation — including the
     /// freshly deployed instance — is reverted.
     ///
-    /// `contract_uri` is intentionally not part of the configuration (yet) and
-    /// is passed as `None` to the token; the admin can set it afterwards with
-    /// the token's `update_contract_uri`.
+    /// `metadata` (canonical JSON) is hashed into the metadata registry in
+    /// this same invocation, and `contract_uri` is forwarded to the token's
+    /// `initialize` so the document location is set atomically with the
+    /// launch. A missing registry address is a hard error — a launch with
+    /// no indexed record is how tokens become anonymous to third parties.
     ///
     /// Token parameters ride in a single [`TokenConfig`] struct so the
     /// function stays at three host-visible arguments (the SDK caps contract
@@ -695,9 +730,10 @@ impl FactoryContract {
             &config.authorization_required,
             &config.authorization_revocable,
             &config.compliance_node,
-            &None,
+            &config.contract_uri,
         );
 
+        Self::_register_metadata(env, token_address, &deployer, &config);
         Self::_record_deployment(env, token_address);
 
         env.events().publish(
@@ -783,6 +819,32 @@ impl FactoryContract {
         TTL_LEDGERS.min(env.storage().max_ttl())
     }
 
+    /// Write the launch into the metadata registry. Missing registry is a
+    /// hard error so a successful `deploy_token` always leaves an indexed
+    /// record a third party can read without SoroPad's API.
+    fn _register_metadata(
+        env: &Env,
+        token_address: &Address,
+        deployer: &Address,
+        config: &TokenConfig,
+    ) {
+        let registry: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::MetadataRegistry)
+            .unwrap_or_else(|| panic_with_error!(env, FactoryError::MetadataRegistryNotSet));
+
+        soroban_metadata_registry::MetadataRegistryContractClient::new(env, &registry)
+            .register(
+                token_address,
+                &config.symbol,
+                &config.name,
+                deployer,
+                &config.initial_supply,
+                &config.metadata,
+            );
+    }
+
     fn _record_deployment(env: &Env, token: &Address) {
         let count = Self::_deployment_count(env);
 
@@ -822,11 +884,12 @@ mod test {
     // set from the contract source to keep `docs/events.json` honest, but
     // keeping the same self-verifying fixture here catches drift without
     // running the script.
-    const EXPECTED_TOPICS: [&str; 12] = [
+    const EXPECTED_TOPICS: [&str; 13] = [
         "init",
         "set_wasm",
         "wasm_chg",
         "cncl_wasm",
+        "set_reg",
         "deploy",
         "prop_adm",
         "cncl_adm",
@@ -926,6 +989,8 @@ mod test {
             authorization_required: false,
             authorization_revocable: false,
             compliance_node: None,
+            metadata: None,
+            contract_uri: None,
         }
     }
 
@@ -943,9 +1008,29 @@ mod test {
     }
 
     fn configured_factory(env: &Env) -> (FactoryContractClient<'static>, Address) {
-        let (_, client, admin) = setup(env);
+        let (factory_id, client, admin) = setup(env);
         set_token_wasm(env, &client, &dummy_wasm_hash(env));
+        attach_registry(env, &factory_id, &client, &admin);
         (client, admin)
+    }
+
+    fn attach_registry(
+        env: &Env,
+        factory_id: &Address,
+        factory_client: &FactoryContractClient<'static>,
+        admin: &Address,
+    ) -> Address {
+        let registry_id = env.register_contract(
+            None,
+            soroban_metadata_registry::MetadataRegistryContract,
+        );
+        let registry = soroban_metadata_registry::MetadataRegistryContractClient::new(
+            env,
+            &registry_id,
+        );
+        registry.initialize(admin, factory_id);
+        factory_client.set_metadata_registry(&registry_id);
+        registry_id
     }
 
     fn deploy_token(
@@ -982,6 +1067,8 @@ mod test {
             authorization_required: false,
             authorization_revocable: false,
             compliance_node: None,
+            metadata: None,
+            contract_uri: None,
         };
         register_token_at(env, deployer, salt);
         client.try_deploy_token(deployer, salt, &config).is_err()
@@ -1352,6 +1439,70 @@ mod test {
     }
 
     #[test]
+    fn test_deploy_token_writes_metadata_registry_in_the_same_invocation() {
+        let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
+        let (factory_id, client, admin) = setup(&env);
+        set_token_wasm(&env, &client, &dummy_wasm_hash(&env));
+        let registry_id = attach_registry(&env, &factory_id, &client, &admin);
+        let registry =
+            soroban_metadata_registry::MetadataRegistryContractClient::new(&env, &registry_id);
+
+        let deployer = Address::generate(&env);
+        let salt = BytesN::from_array(&env, &[8u8; 32]);
+        let json = r#"{"name":"Factory Token","symbol":"FTK","description":"hi"}"#;
+        let uri = String::from_str(&env, "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi");
+        let mut config = default_config(&env, &admin);
+        config.metadata = Some(String::from_str(&env, json));
+        config.contract_uri = Some(uri.clone());
+
+        register_token_at(&env, &deployer, &salt);
+        env.ledger().set_sequence_number(77);
+        let token_address = client.deploy_token(&deployer, &salt, &config);
+
+        let token_client = soroban_token::TokenContractClient::new(&env, &token_address);
+        assert_eq!(token_client.contract_uri(), Some(uri));
+
+        let record = registry.get_record(&token_address).unwrap();
+        assert_eq!(record.symbol, String::from_str(&env, "FTK"));
+        assert_eq!(record.creator, deployer);
+        assert_eq!(record.launch_ledger, 77);
+        assert_eq!(record.initial_supply, 1_000_000i128);
+        let expected_name = env
+            .crypto()
+            .keccak256(&soroban_sdk::Bytes::from_slice(
+                &env,
+                b"Factory Token",
+            ))
+            .into();
+        let expected_meta = env
+            .crypto()
+            .keccak256(&soroban_sdk::Bytes::from_slice(&env, json.as_bytes()))
+            .into();
+        assert_eq!(record.name_digest, expected_name);
+        assert_eq!(record.metadata_digest, Some(expected_meta));
+        assert_eq!(registry.get_record_count(), 1);
+    }
+
+    #[test]
+    fn test_deploy_token_requires_metadata_registry() {
+        let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
+        let (_, client, admin) = setup(&env);
+        set_token_wasm(&env, &client, &dummy_wasm_hash(&env));
+
+        let deployer = Address::generate(&env);
+        let salt = BytesN::from_array(&env, &[9u8; 32]);
+        register_token_at(&env, &deployer, &salt);
+
+        assert_eq!(
+            client.try_deploy_token(&deployer, &salt, &default_config(&env, &admin)),
+            Err(Ok(FactoryError::MetadataRegistryNotSet.into()))
+        );
+        assert_eq!(client.get_deployment_count(), 0);
+    }
+
+    #[test]
     fn test_get_deployment_address_is_deterministic() {
         let env = Env::default();
         env.mock_all_auths_allowing_non_root_auth();
@@ -1400,6 +1551,8 @@ mod test {
             authorization_required: false,
             authorization_revocable: false,
             compliance_node: None,
+            metadata: None,
+            contract_uri: None,
         };
 
         // Only the attacker can auth — never the deployer.
