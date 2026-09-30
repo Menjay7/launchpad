@@ -1,4 +1,4 @@
-import * as StellarSdk from "@stellar/stellar-sdk";
+﻿import * as StellarSdk from "@stellar/stellar-sdk";
 import { type NetworkConfig } from "../types/network";
 import { fetchIndexedEvents } from "./indexer";
 import { wrapRpcCall } from "./soroban";
@@ -1508,10 +1508,12 @@ export async function fetchTransactionHistory(
 }> {
   const { cursor, limit = 200 } = options;
 
-  const topicFilters = TRACKED_EVENT_TOPICS.map(encodeTopicSymbol);
-
+  // Do NOT pass TRACKED_EVENT_TOPICS as RPC topic filters.
+  // Each topic would become a separate EventFilter, which breaks global ledger
+  // ordering, splits the page budget, and can exceed the RPC filter cap.
+  // Client-side filtering by typePath (below) already discards non-transfer
+  // events from the result set. See: github.com/soropad/launchpad/issues/472
   const { events, nextCursor } = await fetchIndexedEvents(contractId, config, {
-    topics: topicFilters,
     cursor,
     limit,
   });
@@ -1633,12 +1635,15 @@ export async function fetchAccountOperations(
   try {
     // For contract IDs, use indexer events instead of Horizon.
     if (accountId.startsWith("C")) {
-      const topicFilters = TRACKED_EVENT_TOPICS.map(encodeTopicSymbol);
+      // Do NOT pass TRACKED_EVENT_TOPICS as RPC topic filters.
+      // Each topic would become a separate EventFilter, which breaks global
+      // ledger ordering, splits the page budget, and can exceed the RPC
+      // filter cap. decodeActivityEvent already filters by topic client-side.
+      // See: github.com/soropad/launchpad/issues/472
       const pageSize = Math.min(limit, 200);
 
       const { events, nextCursor: nextIndexerCursor } =
         await fetchIndexedEvents(accountId, config, {
-          topics: topicFilters,
           limit: pageSize,
           cursor: cursor ?? undefined,
         });

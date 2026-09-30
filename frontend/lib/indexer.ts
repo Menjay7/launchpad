@@ -1,1 +1,324 @@
-aW1wb3J0IHsgdHlwZSBOZXR3b3JrQ29uZmlnIH0gZnJvbSAiLi4vdHlwZXMvbmV0d29yayI7CmltcG9ydCAqIGFzIFN0ZWxsYXJTa2sgZnJvbSAiQHN0ZWxsYXIvc3RlbGxhci1zZGsiOwoKY29uc3QgREVGQVVMVF9NRVJDVVJZX0JBU0VfVVJMX1RFU1RORVQgPQogIHByb2Nlc3MuZW52Lk5FWFRfUFVCTElDX01FUkNVUllfVEVTVE5FVF9VUkwgPz8KICAiaHR0cHM6Ly90ZXN0bmV0Lm1lcmN1cnlkYXRhLmFwcC9yZXN0IjsKY29uc3QgREVGQVVMVF9NRVJDVVJZX0JBU0VfVVJMX01BSU5ORVQgPQogIHByb2Nlc3MuZW52Lk5FWFRfUFVCTElDX01FUkNVUllfTUFJTk5FVF9VUkwgPz8KICAiaHR0cHM6Ly9tYWlubmV0Lm1lcmN1cnlkYXRhLmFwcC9yZXN0IjsKY29uc3QgREVGQVVMVF9NRVJDVVJZX0FVVEhfVE9LRU4gPQogIHByb2Nlc3MuZW52Lk5FWFRfUFVCTElDX01FUkNVUllfQVVUSF9UT0tFTiA/PyAiIjsKCi8qKgogKiBOdW1iZXIgb2YgbGVkZ2VycyB0aGUgUlBDIGZhbGxiYWNrIHdpbmRvdyBzcGFucyB3aGVuIG5vIGN1cnNvciBpcyBzdXBwbGllZC4KICogU3RlbGxhciBsZWRnZXJzIGNsb3NlIGFwcHJveGltYXRlbHkgZXZlcnkgNSBzZWNvbmRzLCBzbyAxMDAwIGxlZGdlcnMg4omIIDgzIG1pbnV0ZXMuCiAqLwpleHBvcnQgY29uc3QgUlBDX0ZBTExCQUNLX1dJTkRPV19MRURHRVJTID0gMTAwMDsKCi8qKgogKiBBcHByb3hpbWF0ZSBsZWRnZXIgY2xvc2UgaW50ZXJ2YWwgaW4gc2Vjb25kcy4gVXNlZCB0byB0cmFuc2xhdGUgYSBsZWRnZXIgd2luZG93CiAqIGludG8gYSBodW1hbi1yZWFkYWJsZSB0aW1lIHNwYW4gZm9yIHRoZSBVSS4KICovCmV4cG9ydCBjb25zdCBBUFBST1hfTEVER0VSX0lOVEVSVkFMX1NFQ09ORFMgPSA1OwoKZXhwb3J0IGludGVyZmFjZSBJbmRleGVkRXZlbnQgewogIGlkOiBzdHJpbmc7CiAgbGVkZ2VyOiBudW1iZXI7CiAgdHhfaGFzaDogc3RyaW5nOwogIHRpbWVzdGFtcDogc3RyaW5nOwogIHRvcGljOiB1bmtub3duW107CiAgdmFsdWU6IHVua25vd247Cn0KCi eightKICogTWV0YWRhdGEgZGVzY3JpYmluZyB0aGUgbGVkZ2VyIHdpbmRvdyB0aGUgZXZlbnRzIHdlcmUgcmV0cmlldmVkIGZyb20uCiAqIFdoZW4gYHRydW5jYXRlZGAgaXMgdHJ1ZSwgdGhlIGV2ZW50cyBhcmUgb25seSBhIHNsaWNlIG9mIHRoZSBjb250cmFjdCdzCiAqIGhpc3RvcnkgYW5kIHRoZSBVSSBtdXN0IHNheSBzby4KICovCmV4cG9ydCBpbnRlcmZhY2UgTGVkZ2VyV2luZG93SW5mbyB7CiAgLyoqIExvd2VzdCBsZWRnZXIgc2VxdWVuY2UgaW5jbHVkZWQgaW4gdGhlIHJlc3VsdCBzZXQuICovCiAgc3RhcnRMZWRnZXI6IG51bWJlcjsKICAvKiogSGlnaGVzdCBsZWRnZXIgc2VxdWVuY2Uga25vd24gdG8gdGhlIG5vZGUgYXQgdGhlIHRpbWUgb2YgdGhlIHF1ZXJ5LiAqLwogIGxhdGVzdExlZGdlcjogbnVtYmVyOwogIC8qKiBOdW1iZXIgb2YgbGVkZ2VycyBjb3ZlcmVkIGJ5IHRoaXMgd2luZG93LiAqLwogIGxpbWl0TGVkZ2VyczogbnVtYmVyOwogIC8qKiBUcnVlIHdoZW4gdGhlIHdpbmRvdyBkb2VzIG5vdCBleHRlbmQgdG8gdGhlIGNvbnRyYWN0J3MgZ2VuZXNpcy4gKi8KICB0cnVuY2F0ZWQ6IGJvb2xlYW47CiAgLyoqIFNvdXJjZSBvZiB0aGUgZGF0YS4gKi8KICBzb3VyY2U6ICJtZXJjdXJ5IiB8ICJycGMiOwp9CgpleHBvcnQgaW50ZXJmYWNlIEZldGNoSW5kZXhlZEV2ZW50c1Jlc3VsdCB7CiAgZXZlbnRzOiBJbmRleGVkRXZlbnRbXTsKICBuZXh0Q3Vyc29yOiBzdHJpbmcgfCBudWxsOwogIC8qKgogICAqIEluZm9ybWF0aW9uIGFib3V0IHRoZSBsZWRnZXIgd2luZG93IHRoYXQgcHJvZHVjZWQgdGhlc2UgZXZlbnRzLiBPbmx5IHBvcHVsYXRlZAogICAqIGZvciB0aGUgUlBDIGZhbGxiYWNrLCB3aGVyZSB0aGUgd2luZG93IGlzIGV4cGxpY2l0bHkgYm91bmRlZC4KICAgKi8KICB3aW5kb3dJbmZvPzogTGVkZ2VyV2luZG93SW5mbzsKfQoKZXhwb3J0IGZ1bmN0aW9uIGdldE1lcmN1cnlDb25maWcoCiAgY29uZmlnOiBOZXR3b3JrQ29uZmlnLAopOiB7IGJhc2VVcmw6IHN0cmluZzsgdG9rZW46IHN0cmluZyB9IHwgbnVsbCB7CiAgY29uc3QgZXhwbGljaXRCYXNlVXJsID0gcHJvY2Vzcy5lbnYuTkVYVF9QVUJMSUNfTUVSQ1VSWV9CQVNFX1VSTDsKICBjb25zdCBiYXNlVXJsID0KICAgIGV4cGxpY2l0QmFzZVVybCA/PQogICAgKGNvbmZpZy5uZXR3b3JrID09PSAibWFpbm5ldCIKICAgICAgPyBERUZBVUxUX01FUkNVUllfQkFTRV9VUkxfTUFJTk5FVAogICAgICA6IERFRkFVTFRfTUVSQ1VSWV9CQVNFX1VSTF9URVNUTkVUKTsKICBjb25zdCB0b2tlbiA9IERFRkFVTFRfTUVSQ1VSWV9BVVRIX1RPS0VOOwoKICBpZiAoIXRva2VuKSB7CiAgICByZXR1cm4gbnVsbDsKICB9CgogIHJldHVybiB7IGJhc2VVcmwsIHRva2VuIH07Cn0KCi8qKgogKiBGZXRjaCBldmVudHMgdXNpbmcgU29yb2JhbiBSUEMncyBuYXRpdmUgZ2V0RXZlbnRzIGVuZHBvaW50IGFzIGEgZmFsbGJhY2sKICogd2hlbiBNZXJjdXJ5IGluZGV4ZXIgaXMgbm90IGNvbmZpZ3VyZWQuCiAqCiAqIFdoZW4gbm8gY3Vyc29yIGlzIHByb3ZpZGVkIHRoZSBSUEMgY2FuIG9ubHkgc2VydmUgYSBib3VuZGVkIGxlZGdlciB3aW5kb3cuCiAqIFdlIHJldHVybiB0aGF0IHdpbmRvdyBhcyB3aW5kb3dJbmZvIHNvIGNhbGxlcnMgY2FuIHRlbGwgdGhlIHVzZXIgdGhlIGhpc3RvcnkKICogaXMgdHJ1bmNhdGVkIGluc3RlYWQgb2YgcHJlc2VudGluZyBpdCBhcyBjb21wbGV0ZS4KICovCmFzeW5jIGZ1bmN0aW9uIGZldGNoRXZlbnRzRnJvbVJwYygKICBjb250cmFjdElkOiBzdHJpbmcsCiAgY29uZmlnOiBOZXR3b3JrQ29uZmlnLAogIG9wdGlvbnM6IHsKICAgIHRvcGljcz86IHN0cmluZ1tdOwogICAgY3Vyc29yPzogc3RyaW5nOwogICAgbGltaXQ/OiBudW1iZXI7CiAgfSA9IHt9LAopOiBQcm9taXNlPEZldGNoSW5kZXhlZEV2ZW50c1Jlc3VsdD4gewogIGNvbnN0IHsgdG9waWNzLCBjdXJzb3IsIGxpbWl0ID0gMjAwIH0gPSBvcHRpb25zOwogIAogIGNvbnN0IHJwYyA9IG5ldyBTdGVsbGFyU2RrLnJwYy5TZXJ2ZXIoY29uZmlnLnJwY1VybCk7CgogIC8vIEJ1aWxkIGZpbHRlcnMgZm9yIFNvcm9iYW4gUlBDIGdldEV2ZW50cwogIGNvbnN0IGZpbHRlcnM6IFN0ZWxsYXJTa2sucnBjLkFwaS5FdmVudEZpbHRlcltdID0gW107CgogIGlmICh0b3BpY3MgJiYgdG9waWNzLmxlbmd0aCA+IDApIHsKICAgIGZvciAoY29uc3QgdG9waWMgb2YgdG9waWNzKSB7CiAgICAgIGZpbHRlcnMucHVzaCh7CiAgICAgICAgY29udHJhY3RJZHM6IFtjb250cmFjdElkXSwKICAgICAgICB0b3BpY3M6IFtbdG9waWNdXSwKICAgICAgfSk7CiAgICB9CiAgfSBlbHNlIHsKICAgIGZpbHRlcnMucHVzaCh7CiAgICAgIGNvbnRyYWN0SWRzOiBbY29udHJhY3RJZF0sCiAgICB9KTsKICB9CgogIC8vIFBhcnNlIGN1cnNvciAoZm9ybWF0OiAibGVkZ2VyLTxzZXF1ZW5jZT4iKSB0byBkZXJpdmUgc3RhcnRMZWRnZXIuCiAgLy8gR2V0RXZlbnRzUmVxdWVzdCB1c2VzIGEgZGlzY3JpbWluYXRlZCB1bmlvbjogZWl0aGVyIHN0YXJ0TGVkZ2VyIE9SIGN1cnNvciwgbmV2ZXIgYm90aC4KICBsZXQgc3RhcnRMZWRnZXI6IG51bWJlciB8IHVuZGVmaW5lZDsKICBpZiAoY3Vyc29yKSB7CiAgICBjb25zdCBjdXJzb3JQYXJ0cyA9IGN1cnNvci5zcGxpdCgiLSIpOwogICAgaWYgKGN1cnNvclBhcnRzLmxlbmd0aCA9PT0gMikgewogICAgICBjb25zdCBwYXJzZWQgPSBwYXJzZUludChjdXJzb3JQYXJ0c1sxXSwgMTApOwogICAgICBpZiAoIWlzTmFOKHBhcnNlZCkpIHsKICAgICAgICBzdGFydExlZGdlciA9IHBhcnNlZDsKICAgICAgfQogICAgfQogIH0KCiAgLy8gV2hlbiBubyBjdXJzb3IgaXMgc3VwcGxpZWQgd2UgY2FuIG9ubHkgc2VydmUgYSBib3VuZGVkIHdpbmRvdyBmcm9tIHRoZSBSUEMuCiAgLy8gUmVjb3JkIHRoZSB3aW5kb3cgc28gdGhlIFVJIGNhbiBzdGF0ZSB0aGF0IHRoZSBoaXN0b3J5IGlzIHRydW5jYXRlZC4KICBsZXQgd2luZG93SW5mbzogTGVkZ2VyV2luZG93SW5mbyB8IHVuZGVmaW5lZDsKICBpZiAoc3RhcnRMZWRnZXIgPT09IHVuZGVmaW5lZCkgewogICAgY29uc3QgbGVkZ2VySW5mbyA9IGF3YWl0IHJwYy5nZXRMYXRlc3RMZWRnZXIoKTsKICAgIGNvbnN0IGxhdGVzdExlZGdlciA9IGxlZGdlckluZm8uc2VxdWVuY2U7CiAgICBjb25zdCB3aW5kb3dTdGFydCA9IE1hdGgubWF4KDEsIGxhdGVzdExlZGdlciAtIFJQQ19GQUxMQkFDS19XSU5ET1dfTEVER0VSUyk7CiAgICBzdGFydExlZGdlciA9IHdpbmRvd1N0YXJ0OwogICAgd2luZG93SW5mbyA9IHsKICAgICAgc3RhcnRMZWRnZXI6IHdpbmRvd1N0YXJ0LAogICAgICBsYXRlc3RMZWRnZXIsCiAgICAgIGxpbWl0TGVkZ2VyczogUlBDX0ZBTExCQUNLX1dJTkRPV19MRURHRVJTLAogICAgICAvLyBUaGUgd2luZG93IGlzIHRydW5jYXRlZCB1bmxlc3MgaXQgYWN0dWFsbHkgcmVhY2hlcyBnZW5lc2lzLgogICAgICB0cnVuY2F0ZWQ6IHdpbmRvd1N0YXJ0ID4gMSwKICAgICAgc291cmNlOiAicnBjIiwKICAgIH07CiAgfQoKICB0cnkgewogICAgY29uc3QgcmVzcG9uc2UgPSBhd2FpdCBycGMuZ2V0RXZlbnRzKHsKICAgICAgZmlsdGVycywKICAgICAgc3RhcnRMZWRnZXIsCiAgICAgIGxpbWl0LAogICAgfSk7CgogICAgY29uc3QgZXZlbnRzOiBJbmRleGVkRXZlbnRbXSA9IHJlc3BvbnNlLmV2ZW50cy5tYXAoKGV2ZW50KSA9PiB7CiAgICAgIC8vIENvbnZlcnQgU29yb2JhbiBSUEMgZXZlbnQgZm9ybWF0IHRvIEluZGV4ZWRFdmVudCBmb3JtYXQKICAgICAgY29uc3QgdG9waWNTdHJpbmdzID0gZXZlbnQudG9waWMubWFwKCh0KSA9PiAKICAgICAgICB0LnRvWERSKCJiYXNlNjQiKQogICAgICApOwogICAgICAKICAgICAgcmV0dXJuIHsKICAgICAgICBpZDogZXZlbnQuaWQsCiAgICAgICAgbGVkZ2VyOiBldmVudC5sZWRnZXIsCiAgICAgICAgdHhfaGFzaDogZXZlbnQudHhIYXNoIHx8ICIiLAogICAgICAgIHRpbWVzdGFtcDogbmV3IERhdGUoZXZlbnQubGVkZ2VyQ2xvc2VkQXQgfHwgMCkudG9JU09TdHJpbmcoKSwKICAgICAgICB0b3BpYzogdG9waWNTdHJpbmdzLAogICAgICAgIHZhbHVlOiBldmVudC52YWx1ZT8udG9YRFIoImJhc2U2NCIpID8/IG51bGwsCiAgICAgIH07CiAgICB9KTsKCiAgICAvLyBEZXRlcm1pbmUgbmV4dCBjdXJzb3IgZnJvbSB0aGUgbGFzdCBldmVudCdzIGxlZGdlCiAgICBsZXQgbmV4dEN1cnNvcjogc3RyaW5nIHwgbnVsbCA9IG51bGw7CiAgICBpZiAoZXZlbnRzLmxlbmd0aCA+IDApIHsKICAgICAgY29uc3QgbGFzdEV2ZW50ID0gZXZlbnRzW2V2ZW50cy5sZW5ndGggLSAxXTsKICAgICAgbmV4dEN1cnNvciA9IGBsZWRnZXItJHtsYXN0RXZlbnQubGVkZ2VyfWA7CiAgICB9CgogICAgcmV0dXJuIHsgZXZlbnRzLCBuZXh0Q3Vyc29yLCB3aW5kb3dJbmZvIH07CiAgfSBjYXRjaCAoZXJyb3IpIHsKICAgIGNvbnNvbGUuZXJyb3IoIlNvcm9iYW4gUlBDIGdldEV2ZW50cyBmYWlsZWQ6IiwgZXJyb3IpOwogICAgdGhyb3cgbmV3IEVycm9yKAogICAgICBgRmFpbGVkIHRvIGZldGNoIGV2ZW50cyBmcm9tIFNvcm9iYW4gUlBDOiAke2Vycm9yIGluc3RhbmNlb2YgRXJyb3IgPyBlcnJvci5tZXNzYWdlIDogIlVua25vd24gZXJyb3IifWAKICAgICk7CiAgfQp9CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gZmV0Y2hJbmRleGVkRXZlbnRzKAogIGNvbnRyYWN0SWQ6IHN0cmluZywKICBjb25maWc6IE5ldHdvcmtDb25maWcsCiAgb3B0aW9uczogewogICAgdG9waWNzPzogc3RyaW5nW107CiAgICBjdXJzb3I/OiBzdHJpbmc7CiAgICBsaW1pdD86IG51bWJlcjsKICB9ID0ge30sCik6IFByb21pc2U8RmV0Y2hJbmRleGVkRXZlbnRzUmVzdWx0PiB7CiAgY29uc3QgbWVyY3VyeSA9IGdldE1lcmN1cnlDb25maWcoY29uZmlnKTsKICAKICAvLyBJZiBNZXJjdXJ5IGlzIG5vdCBjb25maWd1cmVkLCB1c2UgU29yb2JhbiBSUEMgZmFsbGJhY2sKICBpZiAoIW1lcmN1cnkpIHsKICAgIGNvbnNvbGUud2FybigKICAgICAgIk1lcmN1cnkgaW5kZXhlciBub3QgY29uZmlndXJlZC4gVXNpbmcgU29yb2JhbiBSUEMgZmFsbGJhY2sgKGhpc3RvcnkgbWF5IGJlIGxpbWl0ZWQgdG8gcmVjZW50IGxlZGdlcnMpLiIKICAgICk7CiAgICByZXR1cm4gZmV0Y2hFdmVudHNGcm9tUnBjKGNvbnRyYWN0SWQsIGNvbmZpZywgb3B0aW9ucyk7CiAgfQoKICBjb25zdCB7IHRvcGljcywgY3Vyc29yLCBsaW1pdCA9IDIwMCB9ID0gb3B0aW9uczsKCiAgY29uc3Qgc2VhcmNoUGFyYW1zID0gbmV3IFVSTFNlYXJjaFBhcmFtcygpOwogIHNlYXJjaFBhcmFtcy5zZXQoImxpbWl0IiwgU3RyaW5nKGxpbWl0KSk7CiAgaWYgKHRvcGljcyAmJiB0b3BpY3MubGVuZ3RoID4gMCkgewogICAgc2VhcmNoUGFyYW1zLnNldCgidG9waWNzIiwgdG9waWNzLmpvaW4oIiwiKSk7CiAgfQogIGlmIChjdXJzb3IpIHsKICAgIHNlYXJjaFBhcmFtcy5zZXQoImN1cnNvciIsIGN1cnNvcik7CiAgfQoKICBjb25zdCB1cmwgPSBgJHttZXJjdXJ5LmJhc2VVcmx9L2V2ZW50cy9ieS1jb250cmFjdC8ke2NvbnRyYWN0SWR9PyR7c2VhcmNoUGFyYW1zLnRvU3RyaW5nKCl9YDsKCiAgY29uc3QgcmVzcG9uc2UgPSBhd2FpdCBmZXRjaCh1cmwsIHsKICAgIGhlYWRlcnM6IHsKICAgICAgQXV0aG9yaXphdGlvbjogYEJlYXJlciAke21lcmN1cnkudG9rZW59YCwKICAgICAgQWNjZXB0OiAiYXBwbGljYXRpb24vanNvbiIsCiAgICB9LAogIH0pOwoKICBpZiAoIXJlc3BvbnNlLm9rKSB7CiAgICBjb25zdCBib2R5ID0gYXdhaXQgcmVzcG9uc2UudGV4dCgpLmNhdGNoKCgpID0+ICIiKTsKICAgIHRocm93IG5ldyBFcnJvcigKICAgICAgYE1lcmN1cnkgcmVxdWVzdCBmYWlsZWQgKCR7cmVzcG9uc2Uuc3RhdHVzfSk6ICR7Ym9keSB8fCByZXNwb25zZS5zdGF0dXNUZXh0fWAsCiAgICApOwogIH0KCiAgY29uc3QganNvbiA9IChhd2FpdCByZXNwb25zZS5qc29uKCkpIGFzIHVua25vd247CgogIGxldCByYXdFdmVudHM6IHVua25vd25bXTsKICBjb25zdCBwYXlsb2FkID0ganNvbiBhcyB7IGV2ZW50cz86IHVua25vd247IGRhdGE/OiB1bmtub3duOyBjdXJzb3I/OiB1bmtub3duIH07CiAgaWYgKEFycmF5LmlzQXJyYXkocGF5bG9hZD8uZXZlbnRzKSkgewogICAgcmF3RXZlbnRzID0gcGF5bG9hZC5ldmVudHM7CiAgfSBlbHNlIGlmIChBcnJheS5pc0FycmF5KHBheWxvYWQ/LmRhdGEpKSB7CiAgICByYXdFdmVudHMgPSBwYXlsb2FkLmRhdGE7CiAgfSBlbHNlIGlmIChBcnJheS5pc0FycmF5KGpzb24pKSB7CiAgICByYXdFdmVudHMgPSBqc29uIGFzIHVua25vd25bXTsKICB9IGVsc2UgewogICAgcmF3RXZlbnRzID0gW107CiAgfQoKICBjb25zdCBuZXh0Q3Vyc29yID0gZXh0cmFjdE5leHRDdXJzb3IocGF5bG9hZCwgcmF3RXZlbnRzKTsKCiAgY29uc3QgZXZlbnRzID0gcmF3RXZlbnRzLm1hcCgocmF3KSA9PiBub3JtYWxpemVFdmVudChyYXcpKTsKCiAgcmV0dXJuIHsgZXZlbnRzLCBuZXh0Q3Vyc29yIH07Cn0KCmZ1bmN0aW9uIGV4dHJhY3ROZXh0Q3Vyc29yKAogIHBheWxvYWQ6IHsgY3Vyc29yPzogdW5rbm93bjsgbmV4dF9jdXJzb3I/OiB1bmtub3duIH0sCiAgZXZlbnRzOiB1bmtub3duW10sCik6IHN0cmluZyB8IG51bGwgewogIGlmICh0eXBlb2YgcGF5bG9hZC5jdXJzb3IgPT09ICJzdHJpbmciICYmIHBheWxvYWQuY3Vyc29yKSB7CiAgICByZXR1cm4gcGF5bG9hZC5jdXJzb3I7CiAgfQogIGlmICh0eXBlb2YgcGF5bG9hZC5uZXh0X2N1cnNvciA9PT0gInN0cmluZyIgJiYgcGF5bG9hZC5uZXh0X2N1cnNvcikgewogICAgcmV0dXJuIHBheWxvYWQubmV4dF9jdXJzb3I7CiAgfQoKICAvLyBGYWxsIGJhY2sgdG8gdGhlIGlkIG9mIHRoZSBsYXN0IGV2ZW50IGFzIGEgY3Vyc29yCiAgaWYgKGV2ZW50cy5sZW5ndGggPiAwKSB7CiAgICBjb25zdCBsYXN0ID0gZXZlbnRzW2V2ZW50cy5sZW5ndGggLSAxXSBhcyB7CiAgICAgIGlkPzogdW5rbm93bjsKICAgICAgZXZlbnRfaWQ/OiB1bmtub3duOwogICAgfTsKICAgIGNvbnN0IGxhc3RJZCA9IGxhc3QuaWQgPz8gbGFzdC5ldmVudF9pZDsKICAgIGlmICh0eXBlb2YgbGFzdElkID09PSAic3RyaW5nIiAmJiBsYXN0SWQpIHJldHVybiBsYXN0SWQ7CiAgICBpZiAodHlwZW9mIGxhc3RJZCA9PT0gIm51bWJlciIpIHJldHVybiBTdHJpbmcobGFzdElkKTsKICB9CgogIHJldHVybiBudWxsOwp9CgpmdW5jdGlvbiBub3JtYWxpemVFdmVudChyYXc6IHVua25vd24pOiBJbmRleGVkRXZlbnQgewogIGNvbnN0IGUgPSByYXcgYXMgUmVjb3JkPHN0cmluZywgdW5rbm93bj47CgogIGNvbnN0IGlkID0KICAgIHR5cGVvZiAoZS5pZCA/PyBlLmV2ZW50X2lkKSA9PT0gInN0cmluZyIKICAgICAgPyBTdHJpbmcoZS5pZCA/PyBlLmV2ZW50X2lkKQogICAgICA6IHR5cGVvZiAoZS5pZCA/PyBlLmV2ZW50X2lkKSA9PT0gIm51bWJlciIKICAgICAgICA/IFN0cmluZyhlLmlkID8/IGUuZXZlbnRfaWQpCiAgICAgICAgOiAiIjsKCiAgY29uc3QgbGVkZ2VyID0KICAgIHR5cGVvZiAoZS5sZWRnZXIgPz8gZS5sZWRnZXJfc2VxID8/IGUubGVkZ2VyX3NlcXVlbmNlID8/IGUubGVkZ2VyU2VxdWVuY2UpID09PQogICAgIm51bWJlciIKICAgICAgPyBOdW1iZXIoCiAgICAgICAgICBlLmxlZGdlciA/PyBlLmxlZGdlcl9zZXEgPz8gZS5sZWRnZXJfc2VxdWVuY2UgPz8gZS5sZWRnZXJTZXF1ZW5jZSwKICAgICAgICApCiAgICAgIDogTnVtYmVyKAogICAgICAgICAgZS5sZWRnZXIgPz8gZS5sZWRnZXJfc2VxID8/IGUubGVkZ2VyX3NlcXVlbmNlID8/IGUubGVkZ2VyU2VxdWVuY2UsCiAgICAgICAgKSB8fCAwOwoKICBjb25zdCB0eF9oYXNoID0KICAgIHR5cGVvZiAoZS50eF9oYXNoID8/IGUudHhIYXNoID8/IGUuaGFzaCkgPT09ICJzdHJpbmciCiAgICAgID8gU3RyaW5nKGUudHhfaGFzaCA/PyBlLnR4SGFzaCA/PyBlLmhhc2gpCiAgICAgIDogIiI7CgogIGNvbnN0IHJhd1RzID0KICAgIGUudGltZXN0YW1wID8/CiAgICBlLmxlZGdlcl90aW1lc3RhbXAgPz8KICAgIGUubGVkZ2VyVGltZXN0YW1wID8/CiAgICBlLmNyZWF0ZWRfYXQgPz8KICAgIGUuY3JlYXRlZEF0OwogIGxldCB0aW1lc3RhbXA6IHN0cmluZzsKICBpZiAodHlwZW9mIHJhd1RzID09PSAic3RyaW5nIikgewogICAgdGltZXN0YW1wID0gcmF3VHM7CiAgfSBlbHNlIGlmICh0eXBlb2YgcmF3VHMgPT09ICJudW1iZXIiKSB7CiAgICB0aW1lc3RhbXAgPSBuZXcgRGF0ZShyYXdUcyAqIDEwMDApLnRvSVNPU3RyaW5nKCk7CiAgfSBlbHNlIHsKICAgIHRpbWVzdGFtcCA9IG5ldyBEYXRlKDApLnRvSVNPU3RyaW5nKCk7CiAgfQoKICBjb25zdCB0b3BpYzogdW5rbm93bltdID0gQXJyYXkuaXNBcnJheShlLnRvcGljKQogICAgPyBlLnRvcGljCiAgICA6IEFycmF5LmlzQXJyYXkoZS50b3BpY3MpCiAgICAgID8gZS50b3BpY3MKICAgICAgOiBbXTsKCiAgY29uc3QgdmFsdWUgPSBlLnZhbHVlID8/IGUuZGF0YSA/PyBudWxsOwoKICByZXR1cm4geyBpZCwgbGVkZ2VyLCB0eF9oYXNoLCB0aW1lc3RhbXAsIHRvcGljLCB2YWx1ZSB9Owp9Cg==
+﻿import { type NetworkConfig } from "../types/network";
+import * as StellarSkk from "@stellar/stellar-sdk";
+
+const DEFAULT_MERCURY_BASE_URL_TESTNET =
+  process.env.NEXT_PUBLIC_MERCURY_TESTNET_URL ??
+  "https://testnet.mercurydata.app/rest";
+const DEFAULT_MERCURY_BASE_URL_MAINNET =
+  process.env.NEXT_PUBLIC_MERCURY_MAINNET_URL ??
+  "https://mainnet.mercurydata.app/rest";
+const DEFAULT_MERCURY_AUTH_TOKEN =
+  process.env.NEXT_PUBLIC_MERCURY_AUTH_TOKEN ?? "";
+
+/**
+ * Number of ledgers the RPC fallback window spans when no cursor is supplied.
+ * Stellar ledgers close approximately every 5 seconds, so 1000 ledgers ≈ 83 minutes.
+ */
+export const RPC_FALLBACK_WINDOW_LEDGERS = 1000;
+
+/**
+ * Approximate ledger close interval in seconds. Used to translate a ledger window
+ * into a human-readable time span for the UI.
+ */
+export const APPROX_LEDGER_INTERVAL_SECONDS = 5;
+
+export interface IndexedEvent {
+  id: string;
+  ledger: number;
+  tx_hash: string;
+  timestamp: string;
+  topic: unknown[];
+  value: unknown;
+}
+
+'��J * Metadata describing the ledger window the events were retrieved from.
+ * When `truncated` is true, the events are only a slice of the contract's
+ * history and the UI must say so.
+ */
+export interface LedgerWindowInfo {
+  /** Lowest ledger sequence included in the result set. */
+  startLedger: number;
+  /** Highest ledger sequence known to the node at the time of the query. */
+  latestLedger: number;
+  /** Number of ledgers covered by this window. */
+  limitLedgers: number;
+  /** True when the window does not extend to the contract's genesis. */
+  truncated: boolean;
+  /** Source of the data. */
+  source: "mercury" | "rpc";
+}
+
+export interface FetchIndexedEventsResult {
+  events: IndexedEvent[];
+  nextCursor: string | null;
+  /**
+   * Information about the ledger window that produced these events. Only populated
+   * for the RPC fallback, where the window is explicitly bounded.
+   */
+  windowInfo?: LedgerWindowInfo;
+}
+
+export function getMercuryConfig(
+  config: NetworkConfig,
+): { baseUrl: string; token: string } | null {
+  const explicitBaseUrl = process.env.NEXT_PUBLIC_MERCURY_BASE_URL;
+  const baseUrl =
+    explicitBaseUrl ?=
+    (config.network === "mainnet"
+      ? DEFAULT_MERCURY_BASE_URL_MAINNET
+      : DEFAULT_MERCURY_BASE_URL_TESTNET);
+  const token = DEFAULT_MERCURY_AUTH_TOKEN;
+
+  if (!token) {
+    return null;
+  }
+
+  return { baseUrl, token };
+}
+
+/**
+ * Fetch events using Soroban RPC's native getEvents endpoint as a fallback
+ * when Mercury indexer is not configured.
+ *
+ * When no cursor is provided the RPC can only serve a bounded ledger window.
+ * We return that window as windowInfo so callers can tell the user the history
+ * is truncated instead of presenting it as complete.
+ */
+async function fetchEventsFromRpc(
+  contractId: string,
+  config: NetworkConfig,
+  options: {
+    topics?: string[];
+    cursor?: string;
+    limit?: number;
+  } = {},
+): Promise<FetchIndexedEventsResult> {
+  // NOTE: the `topics` option is intentionally ignored for the RPC path.
+  // Expanding a list of N topic-0 symbols into N separate EventFilter entries
+  // breaks global ledger ordering (results are concatenated per-filter, not
+  // merged), splits the page budget across filters, and can hit the Soroban
+  // RPC per-request filter cap. Instead we fetch all events for the contract
+  // with a single contractIds filter and let callers filter by topic
+  // client-side — which they already do via decodeActivityEvent /
+  // typePath checks. See: github.com/soropad/launchpad/issues/472
+  const { cursor, limit = 200 } = options;
+
+  const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
+
+  // Single filter: fetch all events for this contract in one ordered result set.
+  const filters: StellarSdk.rpc.Api.EventFilter[] = [
+    { contractIds: [contractId] },
+  ];
+
+  // Parse cursor (format: "ledger-<sequence>") to derive startLedger.
+  // GetEventsRequest uses a discriminated union: either startLedger OR cursor, never both.
+  let startLedger: number | undefined;
+  if (cursor) {
+    const cursorParts = cursor.split("-");
+    if (cursorParts.length === 2) {
+      const parsed = parseInt(cursorParts[1], 10);
+      if (!isNaN(parsed)) {
+        startLedger = parsed;
+      }
+    }
+  }
+
+  // When no cursor is supplied we can only serve a bounded window from the RPC.
+  // Record the window so the UI can state that the history is truncated.
+  let windowInfo: LedgerWindowInfo | undefined;
+  if (startLedger === undefined) {
+    const ledgerInfo = await rpc.getLatestLedger();
+    const latestLedger = ledgerInfo.sequence;
+    const windowStart = Math.max(1, latestLedger - RPC_FALLBACK_WINDOW_LEDGERS);
+    startLedger = windowStart;
+    windowInfo = {
+      startLedger: windowStart,
+      latestLedger,
+      limitLedgers: RPC_FALLBACK_WINDOW_LEDGERS,
+      // The window is truncated unless it actually reaches genesis.
+      truncated: windowStart > 1,
+      source: "rpc",
+    };
+  }
+
+  try {
+    const response = await rpc.getEvents({
+      filters,
+      startLedger,
+      limit,
+    });
+
+    const events: IndexedEvent[] = response.events.map((event) => {
+      // Convert Soroban RPC event format to IndexedEvent format
+      const topicStrings = event.topic.map((t) => 
+        t.toXDR("base64")
+      );
+      
+      return {
+        id: event.id,
+        ledger: event.ledger,
+        tx_hash: event.txHash || "",
+        timestamp: new Date(event.ledgerClosedAt || 0).toISOString(),
+        topic: topicStrings,
+        value: event.value?.toXDR("base64") ?? null,
+      };
+    });
+
+    // Determine next cursor from the last event's ledge
+    let nextCursor: string | null = null;
+    if (events.length > 0) {
+      const lastEvent = events[events.length - 1];
+      nextCursor = `ledger-${lastEvent.ledger}`;
+    }
+
+    return { events, nextCursor, windowInfo };
+  } catch (error) {
+    console.error("Soroban RPC getEvents failed:", error);
+    throw new Error(
+      `Failed to fetch events from Soroban RPC: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+export async function fetchIndexedEvents(
+  contractId: string,
+  config: NetworkConfig,
+  options: {
+    topics?: string[];
+    cursor?: string;
+    limit?: number;
+  } = {},
+): Promise<FetchIndexedEventsResult> {
+  const mercury = getMercuryConfig(config);
+  
+  // If Mercury is not configured, use Soroban RPC fallback
+  if (!mercury) {
+    console.warn(
+      "Mercury indexer not configured. Using Soroban RPC fallback (history may be limited to recent ledgers)."
+    );
+    return fetchEventsFromRpc(contractId, config, options);
+  }
+
+  const { topics, cursor, limit = 200 } = options;
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("limit", String(limit));
+  if (topics && topics.length > 0) {
+    searchParams.set("topics", topics.join(","));
+  }
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+
+  const url = `${mercury.baseUrl}/events/by-contract/${contractId}?${searchParams.toString()}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${mercury.token}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Mercury request failed (${response.status}): ${body || response.statusText}`,
+    );
+  }
+
+  const json = (await response.json()) as unknown;
+
+  let rawEvents: unknown[];
+  const payload = json as { events?: unknown; data?: unknown; cursor?: unknown };
+  if (Array.isArray(payload?.events)) {
+    rawEvents = payload.events;
+  } else if (Array.isArray(payload?.data)) {
+    rawEvents = payload.data;
+  } else if (Array.isArray(json)) {
+    rawEvents = json as unknown[];
+  } else {
+    rawEvents = [];
+  }
+
+  const nextCursor = extractNextCursor(payload, rawEvents);
+
+  const events = rawEvents.map((raw) => normalizeEvent(raw));
+
+  return { events, nextCursor };
+}
+
+function extractNextCursor(
+  payload: { cursor?: unknown; next_cursor?: unknown },
+  events: unknown[],
+): string | null {
+  if (typeof payload.cursor === "string" && payload.cursor) {
+    return payload.cursor;
+  }
+  if (typeof payload.next_cursor === "string" && payload.next_cursor) {
+    return payload.next_cursor;
+  }
+
+  // Fall back to the id of the last event as a cursor
+  if (events.length > 0) {
+    const last = events[events.length - 1] as {
+      id?: unknown;
+      event_id?: unknown;
+    };
+    const lastId = last.id ?? last.event_id;
+    if (typeof lastId === "string" && lastId) return lastId;
+    if (typeof lastId === "number") return String(lastId);
+  }
+
+  return null;
+}
+
+function normalizeEvent(raw: unknown): IndexedEvent {
+  const e = raw as Record<string, unknown>;
+
+  const id =
+    typeof (e.id ?? e.event_id) === "string"
+      ? String(e.id ?? e.event_id)
+      : typeof (e.id ?? e.event_id) === "number"
+        ? String(e.id ?? e.event_id)
+        : "";
+
+  const ledger =
+    typeof (e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence) ===
+    "number"
+      ? Number(
+          e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence,
+        )
+      : Number(
+          e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence,
+        ) || 0;
+
+  const tx_hash =
+    typeof (e.tx_hash ?? e.txHash ?? e.hash) === "string"
+      ? String(e.tx_hash ?? e.txHash ?? e.hash)
+      : "";
+
+  const rawTs =
+    e.timestamp ??
+    e.ledger_timestamp ??
+    e.ledgerTimestamp ??
+    e.created_at ??
+    e.createdAt;
+  let timestamp: string;
+  if (typeof rawTs === "string") {
+    timestamp = rawTs;
+  } else if (typeof rawTs === "number") {
+    timestamp = new Date(rawTs * 1000).toISOString();
+  } else {
+    timestamp = new Date(0).toISOString();
+  }
+
+  const topic: unknown[] = Array.isArray(e.topic)
+    ? e.topic
+    : Array.isArray(e.topics)
+      ? e.topics
+      : [];
+
+  const value = e.value ?? e.data ?? null;
+
+  return { id, ledger, tx_hash, timestamp, topic, value };
+}
