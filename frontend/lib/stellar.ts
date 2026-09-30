@@ -1521,6 +1521,9 @@ export async function fetchTransactionHistory(
   const items: TransactionItem[] = [];
 
   for (const event of events) {
+    // Skip events that cannot be placed in chain order or lack a timestamp.
+    if (event.ledger === null || event.timestamp === null) continue;
+
     const topic0 = toScVal(event.topic[0]);
     if (!topic0) continue;
 
@@ -1583,7 +1586,7 @@ export async function fetchTransactionHistory(
 }
 
 function computeHistoryWindow(
-  events: { ledger: number }[],
+  events: { ledger: number | null }[],
   cursor: string | undefined,
 ): HistoryWindow {
   if (cursor) {
@@ -1592,9 +1595,16 @@ function computeHistoryWindow(
   if (events.length === 0) {
     return { startLedger: null, truncated: false };
   }
-  const startLedger = events.reduce(
-    (min, e) => (e.ledger < min ? e.ledger : min),
-    events[0].ledger,
+  // Exclude events with no known ledger from the window calculation.
+  const knownLedgers = events
+    .map((e) => e.ledger)
+    .filter((l): l is number => l !== null);
+  if (knownLedgers.length === 0) {
+    return { startLedger: null, truncated: false };
+  }
+  const startLedger = knownLedgers.reduce(
+    (min, l) => (l < min ? l : min),
+    knownLedgers[0],
   );
   return { startLedger, truncated: true };
 }
@@ -1651,6 +1661,9 @@ export async function fetchAccountOperations(
       const records: TokenActivityInfo[] = [];
 
       for (const event of events) {
+        // Skip events that cannot be placed in chain order or lack a timestamp.
+        if (event.ledger === null || event.timestamp === null) continue;
+
         const decoded = decodeActivityEvent(
           // IndexedEvent.topic is unknown[]; the decoder re-parses each entry
           // as an XDR-encoded string, so normalize before handing it over.

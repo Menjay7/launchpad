@@ -24,9 +24,19 @@ export const APPROX_LEDGER_INTERVAL_SECONDS = 5;
 
 export interface IndexedEvent {
   id: string;
-  ledger: number;
+  /**
+   * Ledger sequence number, or null when the upstream payload carries no
+   * ledger field under any of its known spellings. Callers must skip null-
+   * ledger events because they cannot be placed in chain order.
+   */
+  ledger: number | null;
   tx_hash: string;
-  timestamp: string;
+  /**
+   * ISO-8601 timestamp string, or null when the upstream payload carries no
+   * recognisable timestamp. Callers should render null as "—" rather than
+   * defaulting to the Unix epoch.
+   */
+  timestamp: string | null;
   topic: unknown[];
   value: unknown;
 }
@@ -282,15 +292,15 @@ function normalizeEvent(raw: unknown): IndexedEvent {
         ? String(e.id ?? e.event_id)
         : "";
 
-  const ledger =
-    typeof (e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence) ===
-    "number"
-      ? Number(
-          e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence,
-        )
-      : Number(
-          e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence,
-        ) || 0;
+  // Collapse the four known spellings into one candidate value.
+  // If none is present (candidate is undefined/null) or the coercion yields
+  // NaN, the ledger is genuinely unknown — return null so callers can skip
+  // the event rather than silently treating it as ledger 0.
+  const ledgerCandidate =
+    e.ledger ?? e.ledger_seq ?? e.ledger_sequence ?? e.ledgerSequence;
+  const ledgerNum = Number(ledgerCandidate);
+  const ledger: number | null =
+    ledgerCandidate != null && !isNaN(ledgerNum) ? ledgerNum : null;
 
   const tx_hash =
     typeof (e.tx_hash ?? e.txHash ?? e.hash) === "string"
@@ -303,13 +313,15 @@ function normalizeEvent(raw: unknown): IndexedEvent {
     e.ledgerTimestamp ??
     e.created_at ??
     e.createdAt;
-  let timestamp: string;
+  let timestamp: string | null;
   if (typeof rawTs === "string") {
     timestamp = rawTs;
   } else if (typeof rawTs === "number") {
     timestamp = new Date(rawTs * 1000).toISOString();
   } else {
-    timestamp = new Date(0).toISOString();
+    // No recognisable timestamp field — return null so callers can render
+    // "—" instead of defaulting to the Unix epoch (1970-01-01).
+    timestamp = null;
   }
 
   const topic: unknown[] = Array.isArray(e.topic)
