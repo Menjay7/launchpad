@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { 
-  getTrackedDeployments, 
+  fetchWalletDeployments,
   trackDeployment, 
   removeTrackedDeployment,
   type TrackedDeployment 
@@ -90,11 +90,13 @@ export default function PersonalDashboard() {
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
-  const loadTrackedTokens = useCallback(() => {
+  const loadTrackedTokens = useCallback(async () => {
     if (publicKey) {
-      setTrackedTokens(getTrackedDeployments(publicKey));
+      const factoryAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "";
+      const deployments = await fetchWalletDeployments(publicKey, networkConfig, factoryAddress);
+      setTrackedTokens(deployments);
     }
-  }, [publicKey]);
+  }, [publicKey, networkConfig]);
 
   const handleImportToken = async () => {
     if (!publicKey || !importContractId.trim()) return;
@@ -102,6 +104,8 @@ export default function PersonalDashboard() {
     setImportError(null);
     try {
       const info = await fetchTokenInfo(importContractId.trim());
+      // Import is now just for tokens not deployed through the factory
+      // or for manual tracking. The main list comes from on-chain data.
       trackDeployment(publicKey, {
         contractId: importContractId.trim(),
         name: info.name,
@@ -109,7 +113,7 @@ export default function PersonalDashboard() {
         network: networkConfig.network,
       });
       setImportContractId("");
-      loadTrackedTokens();
+      await loadTrackedTokens();
     } catch {
       setImportError(t("importError"));
     } finally {

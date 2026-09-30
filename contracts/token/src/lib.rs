@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype, panic_with_error,
-    symbol_short, Address, BytesN, Env, String,
+    auth::AuthorizedInvocation, contract, contractclient, contracterror, contractimpl,
+    contracttype, panic_with_error, symbol_short, Address, BytesN, Env, String,
 };
 
 // ---------------------------------------------------------------------------
@@ -79,6 +79,10 @@ pub enum DataKey {
     /// Set once by `launch_seal`. Holds the issuer's commitment together with
     /// the ledger and total supply at the moment of sealing (#493).
     LaunchSeal,
+    /// Continuous-vesting schedule for a recipient, written by `stream_grant`.
+    Stream(Address),
+    /// Total amount already released to a recipient by `claim_stream`.
+    StreamReleased(Address),
 }
 
 /// Creator-attested record that a launch reached the issuer's success
@@ -96,6 +100,21 @@ pub struct LaunchSeal {
 pub struct AllowanceValue {
     pub amount: i128,
     pub expiration_ledger: u32,
+}
+
+/// Continuous-vesting schedule for a single recipient.
+///
+/// Accrual is pure arithmetic over the ledger sequence: nothing here is
+/// touched by the token, so `stream_accrued` reads without a transaction and
+/// a paused or frozen token only stops the withdrawal, never the accounting.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct Stream {
+    pub total: i128,
+    pub start_ledger: u32,
+    pub end_ledger: u32,
+    pub max_per_claim: i128,
+    pub released: i128,
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +185,13 @@ pub enum TokenError {
     /// Contract URI is empty, too long, contains whitespace or control
     /// characters, or uses a scheme other than `https://` or `ipfs://`.
     InvalidContractUri = 25,
+    /// `stream_grant` was called with a non-positive total, an end ledger not
+    /// strictly after the start ledger, or a non-positive `max_per_claim`.
+    InvalidStreamSchedule = 26,
+    /// `claim_stream` was called with no schedule for the recipient.
+    NoStream = 27,
+    /// The authorised invocation does not cover the requested claim range.
+    UnauthorizedClaim = 28,
 }
 
 #[contractclient(name = "ComplianceNodeClient")]
@@ -1170,6 +1196,158 @@ impl TokenContract {
     /// Returns the seal record, or `None` if the launch has not been sealed.
     pub fn launch_seal_info(env: Env) -> Option<LaunchSeal> {
         env.storage().instance().get(&DataKey::LaunchSeal)
+    }
+
+    // ── Continuous vesting streams (#168) ───────────────────────────────
+
+    /// Create a continuous-vesting stream for `recipient`. Admin only.
+    ///
+    /// `total` accrues linearly from `start_ledger` to `end_ledger`, and the
+    /// recipient may release accrued tokens with `claim_stream` up to
+    /// `max_per_claim` per call. The bound is what keeps a single authorised
+    /// invocation from draining the contract.
+    pub fn stream_grant(
+        env: Env,
+        recipient: Address,
+        total: i128,
+        start_ledger: u32,
+        end_ledger: u32,
+        max_per_claim: i128,
+    ) {
+        Self::_require_admin(&env);
+        if total <= 0 || max_per_claim <= 0 || end_ledger <= start_ledger {
+            panic_with_error!(&env, TokenError::InvalidStreamSchedule);
+        }
+
+        let stream = Stream {
+            total,
+            start_ledger,
+            end_ledger,
+            max_per_claim,
+            released: 0,
+        };
+        let key = DataKey::Stream(recipient.clone());
+        env.storage().persistent().set(&key, &stream);
+        Self::_touch_policy_entry(&env, &key);
+
+        env.events().publish(
+            (symbol_short!("stream"), recipient),
+            (total, start_ledger, end_ledger, max_per_claim),
+        );
+    }
+
+    /// Release accrued tokens to `recipient` against a scoped authorisation.
+    ///
+    /// The recipient pre-authorises a bounded claim range once, off-chain;
+    /// a relayer submits the resulting `AuthorizedInvocation`, and the
+    /// contract verifies the scope covers `(recipient, from_ledger,
+    /// to_ledger)` before paying `accrued(to_ledger) - released`, capped at
+    /// the schedule's `max_per_claim`.
+    pub fn claim_stream(
+        env: Env,
+        recipient: Address,
+        from_ledger: u32,
+        to_ledger: u32,
+        auth: AuthorizedInvocation,
+    ) {
+        Self::_check_paused(&env);
+
+        let key = DataKey::Stream(recipient.clone());
+        let mut stream: Stream = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(&env, TokenError::NoStream));
+
+        // The recipient's signature must cover exactly this claim range.
+        Self::_require_claim_authorized(&env, &recipient, from_ledger, to_ledger, &auth);
+
+        let accrued_to = Self::_stream_accrued_at(&stream, to_ledger);
+        let claimable = accrued_to
+            .checked_sub(stream.released)
+            .expect("stream released exceeds accrued");
+        if claimable <= 0 {
+            return;
+        }
+        let payout = claimable.min(stream.max_per_claim);
+
+        stream.released = stream
+            .released
+            .checked_add(payout)
+            .expect("stream released overflow");
+        env.storage().persistent().set(&key, &stream);
+        Self::_touch_policy_entry(&env, &key);
+
+        Self::_mint(&env, &recipient, payout);
+        let ttl_ledgers = Self::_ttl_ledgers(&env);
+        let balance_key = DataKey::Balance(recipient.clone());
+        env.storage()
+            .persistent()
+            .extend_ttl(&balance_key, ttl_ledgers, ttl_ledgers);
+
+        env.events().publish(
+            (symbol_short!("claim"), recipient),
+            (payout, from_ledger, to_ledger),
+        );
+    }
+
+    /// Pure-arithmetic view of how much has accrued to `recipient` by
+    /// `ledger`. Never touches the token, so it is safe to call while the
+    /// contract is paused or the recipient is frozen (#168).
+    pub fn stream_accrued(env: Env, recipient: Address, ledger: u32) -> i128 {
+        let stream: Stream = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Stream(recipient))
+            .unwrap_or_else(|| panic_with_error!(&env, TokenError::NoStream));
+        Self::_stream_accrued_at(&stream, ledger)
+    }
+
+    /// Returns the schedule for `recipient`, or `None` if none exists.
+    pub fn stream_info(env: Env, recipient: Address) -> Option<Stream> {
+        env.storage().persistent().get(&DataKey::Stream(recipient))
+    }
+
+    /// Linear accrual of `stream.total` between `start_ledger` and
+    /// `end_ledger`, clamped at both ends. Pure arithmetic.
+    fn _stream_accrued_at(stream: &Stream, ledger: u32) -> i128 {
+        if ledger <= stream.start_ledger {
+            return 0;
+        }
+        if ledger >= stream.end_ledger {
+            return stream.total;
+        }
+        let elapsed = (ledger - stream.start_ledger) as i128;
+        let duration = (stream.end_ledger - stream.start_ledger) as i128;
+        stream
+            .total
+            .checked_mul(elapsed)
+            .expect("stream accrual overflow")
+            / duration
+    }
+
+    /// Verify that `auth` is a `claim_stream` invocation scoped to
+    /// `(recipient, from_ledger, to_ledger)` and that `recipient` signed it.
+    fn _require_claim_authorized(
+        env: &Env,
+        recipient: &Address,
+        from_ledger: u32,
+        to_ledger: u32,
+        auth: &AuthorizedInvocation,
+    ) {
+        let expected_args = (
+            recipient.clone(),
+            from_ledger,
+            to_ledger,
+        )
+            .into_val(env);
+        let matches = auth.function == symbol_short!("claim_str")
+            && auth.contract == env.current_contract_address()
+            && auth.args == expected_args;
+        if !matches {
+            panic_with_error!(env, TokenError::UnauthorizedClaim);
+        }
+        recipient.require_auth_for_args(expected_args);
     }
 
     // ── Internal helpers ────────────────────────────────────────────────

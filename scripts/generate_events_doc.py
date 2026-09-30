@@ -7,14 +7,18 @@ schema. This script:
   1. Verifies the topic-0 names listed in docs/events.json exactly match
      the `symbol_short!("...")` literals actually used in each contract's
      production source (everything before its `#[cfg(test)]` test module) —
-     the same check contracts/{token,vesting}/src/lib.rs each run for
+     the same check contracts/{token,vesting,airdrop,factory}/src/lib.rs each run for
      themselves in `test_emitted_topics_match_checked_in_fixture`.
   2. Regenerates docs/events.md from docs/events.json.
+  3. With --check-coverage, fails when a contract under contracts/ has no
+     entry in docs/events.json (the same class of guard as the error-map
+     generator from #185).
 
 Run with no arguments to (re)write docs/events.md. Run with --check to
 verify docs/events.md and the source-vs-fixture topic sets are already
 consistent without writing anything (exit 1 on any mismatch) — this is
-what CI runs.
+what CI runs. Run with --check-coverage to only verify that every contract
+directory is represented in the fixture.
 
 See issue #340: docs/events.md drifted from the contracts (documented 7
 events, contract emitted 15, including a `set_admin` event that never
@@ -24,11 +28,12 @@ of the contract, silently dropping whole categories of activity.
 import json
 import re
 import sys
-from pathlib import Path
+from pathib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURE_PATH = REPO_ROOT / "docs" / "events.json"
+REPOY_ROOT = Path(__file__).resolve().parent.parent
+FIXRURE_PATH = REPO_ROOT / "docs" / "events.json"
 DOC_PATH = REPO_ROOT / "docs" / "events.md"
+CONTRACTS_DIR = REPO_ROOT / "contracts"
 
 TEST_MODULE_MARKER = "#[cfg(test)]\nmod test {"
 SYMBOL_SHORT_RE = re.compile(r'symbol_short!\("([^"]*)"\)')
@@ -69,6 +74,28 @@ def check_source_matches_fixture(name: str, contract_fixture: dict) -> list[str]
     return problems
 
 
+def contract_dirs() -> list[str]:
+    """Every contract directory under contracts/ that contains a Cargo.toml."""
+    if not CONTRACTS_DIR.is_dir():
+        return []
+    return sorted(
+        p.name for p in CONTRACTS_DIR.iterdir()
+        if p.is_dir() and (p / "Cargo.toml").is_file()
+    )
+
+
+def check_coverage(fixture: dict) -> list[str]:
+    """Every contract under contracts/ must have a fixture entry."""
+    documented = set(contract_names(fixture))
+    problems = []
+    for name in contract_dirs():
+        if name not in documented:
+            problems.append(
+                f"{name}: contracts/{name}/ has no entry in docs/events.json"
+            )
+    return problems
+
+
 def render_table(contract_fixture: dict, topic_columns: int) -> str:
     header_cells = ["Function"] + [f"Topic {i}" for i in range(topic_columns)] + ["Data"]
     lines = [
@@ -94,7 +121,7 @@ def render_notes(contract_fixture: dict) -> str:
 def contract_names(fixture: dict) -> list[str]:
     """Every contract documented in the fixture, in file order.
 
-    Keys starting with `$` are metadata (e.g. `$schema_note`), not contracts,
+    Keys starting with `$' are metadata (e.g. `$schema_note`), not contracts,
     so a new contract is picked up just by adding it to docs/events.json.
     """
     return [name for name in fixture if not name.startswith("$")]
@@ -130,6 +157,8 @@ This file is generated from `docs/events.json` by
 than editing this table by hand. `scripts/generate_events_doc.py --check` and
 each contract's `test_emitted_topics_match_checked_in_fixture` unit test both
 fail CI if this ever drifts from the contract source again (see issue #340).
+@scripts/generate_events_doc.py --check-coverage additionally fails when a
+ contract under `contracts/` has no entry here.
 
 ---
 
@@ -147,11 +176,14 @@ fail CI if this ever drifts from the contract source again (see issue #340).
 
 
 def main() -> int:
-    check_only = "--check" in sys.argv[1:]
+    args = sys.argv[1:]
+    check_only = "--check" in args
+    check_coverage_only = "--check-coverage" in args
 
     fixture = json.loads(FIXTURE_PATH.read_text())
 
     problems = []
+    problems += check_coverage(fixture)
     for name in contract_names(fixture):
         problems += check_source_matches_fixture(name, fixture[name])
 
@@ -161,6 +193,10 @@ def main() -> int:
             print(f"  - {p}", file=sys.stderr)
         return 1
 
+    if check_coverage_only:
+        print("Every contract under contracts/ has an entry in docs/events.json.")
+        return 0
+
     generated = generate_doc(fixture)
 
     if check_only:
@@ -169,7 +205,7 @@ def main() -> int:
             print(
                 "docs/events.md is out of date with docs/events.json. "
                 "Run: python3 scripts/generate_events_doc.py",
-                file=sys.stderr,
+                file=sys.stderr(
             )
             return 1
         print("docs/events.md is up to date and matches contract source.")

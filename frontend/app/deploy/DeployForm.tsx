@@ -17,7 +17,7 @@ import { StepReview } from "./steps/StepReview";
 import { FeeEstimation } from "./components/FeeEstimation";
 import { useTransactionSimulator } from "@/hooks/useTransactionSimulator";
 import { useWallet } from "@/app/hooks/useWallet";
-import { trackDeployment } from "@/lib/deployments";
+import { savePendingMetadata } from "./utils/metadata";
 import { ArrowLeft, ArrowRight, Rocket, Wallet } from "lucide-react";
 import { useNetwork } from "@/app/providers/NetworkProvider";
 import { useToast } from "@/app/providers/ToastProvider";
@@ -281,25 +281,13 @@ export default function DeployForm() {
 
   /**
    * Client-side bookkeeping once a deploy transaction has been submitted:
-   * the per-wallet cooldown and the user's deployment list.
-   *
-   * Metadata no longer needs to be saved locally — it is committed on-chain
-   * via the metadata registry in the same transaction as the deploy.
+   * pending metadata and the per-wallet cooldown.
+   * Deployments are tracked on-chain via the factory, not in localStorage.
    */
   const recordDeployment = (data: DeployFormData, contractId: string) => {
     try {
       const key = `soropad:lastDeploy:${publicKey ?? "anonymous"}`;
       localStorage.setItem(key, Date.now().toString());
-
-      // Track deployment for user dashboard
-      if (publicKey) {
-        trackDeployment(publicKey, {
-          contractId,
-          name: data.name,
-          symbol: data.symbol,
-          network: networkConfig.network,
-        });
-      }
     } catch {
       // Ignore tracking errors
     }

@@ -20,6 +20,22 @@ jobs:
       - name: Check event docs are in sync with contract source
         run: python3 scripts/generate_events_doc.py --check
 
+      - name: Verify every contract has an events.json entry
+        run: |
+          missing=0
+          for dir in contracts/*/; do
+            name=$(basename "$dir")
+            if [ "$name" = "wasm-manifest.json" ]; then continue; fi
+            if ! python3 -c "import json,sys; d=json.load(open('docs/events.json')); sys.exit(0 if '$name' in d else 1)"; then
+              echo "::error::Contract '$name' has no entry in docs/events.json"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Add the missing contract(s) to docs/events.json and regenerate docs/events.md."
+            exit 1
+          fi
+
       - name: Reject literal persistent-entry TTLs
         run: |
           if rg -n 'let ttl_ledgers\s*=\s*[0-9]' contracts/token/src/lib.rs; then

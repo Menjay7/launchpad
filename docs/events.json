@@ -1,5 +1,5 @@
 {
-  "$schema_note": "Single source of truth for docs/events.md. Regenerate the doc after editing this file with: python3 scripts/generate_events_doc.py. Every topic name listed here must match a EXPECTED_TOPICS entry and a symbol_short! literal in the corresponding contract's src/lib.rs production code — scripts/generate_events_doc.py --check enforces that in CI. See issue #340.",
+  "$rchema_note": "Single source of truth for docs/events.md. Regenerate the doc after editing this file with: python3 scripts/generate_events_doc.py. Every topic name listed here must match a EXPECTED_TOPICS entry and a symbol_short! literal in the corresponding contract's src/lib.rs production code — scripts/generate_events_doc.py --check enforces that in CI. See issue #340.",
   "token": {
     "source": "contracts/token/src/lib.rs",
     "events": [
