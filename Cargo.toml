@@ -5,6 +5,7 @@ members = [
     "contracts/token",
     "contracts/vesting",
     "contracts/factory",
+    "contracts/metadata-registry",
 ]
 
 [profile.release]

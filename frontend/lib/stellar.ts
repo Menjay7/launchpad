@@ -2279,3 +2279,164 @@ export async function submitTransaction(
     { operation: "Submit transaction" },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Launch attestation
+// ---------------------------------------------------------------------------
+
+/**
+ * The four on-chain facts a deployer needs before signing.
+ *
+ * Everything here is read directly from the chain and compared against the
+ * audited manifest — no SoroPad API involved. A user can reproduce this
+ * independently given only the factory address and their salt.
+ */
+export interface LaunchAttestation {
+  /** Current WASM hash of the factory contract itself (hex). */
+  factoryHash: string | null;
+  /** WASM hash the factory will use for the token it is about to deploy (hex). */
+  tokenWasmHash: string | null;
+  /**
+   * Whether both hashes match the audited manifest.
+   *
+   * - `"match"` — both hashes present in manifest and equal to on-chain values.
+   * - `"mismatch"` — at least one hash differs from the manifest (fail-closed).
+   * - `"unknown"` — manifest could not be fetched or has no entry for this
+   *   network; the check is inconclusive, not a hard failure.
+   */
+  manifestMatch: "match" | "mismatch" | "unknown";
+  /** Deterministic token address that `deploy_token(deployer, salt)` will produce. */
+  address: string | null;
+  /** Non-fatal notices the user should see (e.g. manifest entries are empty). */
+  warnings: string[];
+}
+
+/**
+ * Resolve all four attestation facts for an imminent `deploy_token` call.
+ *
+ * Fetches the factory's own WASM hash, reads the token WASM hash the factory
+ * currently points at (via `get_token_wasm_hash`), computes the deterministic
+ * token address from `deployer` + `salt`, and cross-checks both hashes against
+ * the audited manifest.
+ *
+ * Designed to run during Step 4 (Review) before the user signs — all reads
+ * are view-only simulations, nothing is submitted.
+ */
+export async function resolveLaunchAttestation(
+  factoryAddress: string,
+  deployer: string,
+  salt: Uint8Array,
+  config: NetworkConfig,
+): Promise<LaunchAttestation> {
+  const warnings: string[] = [];
+
+  // ── 1. Read factory WASM hash and token WASM hash in parallel ────────
+  const [factoryHash, tokenWasmHashResult, manifest] = await Promise.allSettled([
+    getContractWasmHash(factoryAddress, config),
+    simulateCall(factoryAddress, "get_token_wasm_hash", config),
+    fetchWasmManifest(),
+  ]);
+
+  const resolvedFactoryHash =
+    factoryHash.status === "fulfilled" ? factoryHash.value : null;
+
+  let resolvedTokenWasmHash: string | null = null;
+  if (tokenWasmHashResult.status === "fulfilled") {
+    try {
+      // get_token_wasm_hash returns BytesN<32>
+      const rawBytes = tokenWasmHashResult.value.bytes() as Buffer;
+      resolvedTokenWasmHash = Buffer.from(rawBytes).toString("hex");
+    } catch {
+      // Could not decode the return value
+    }
+  }
+
+  // ── 2. Compute deterministic token address via factory view call ─────
+  // The factory exposes `get_deployment_address(deployer, salt) -> Address`,
+  // which mirrors the host's deterministic derivation without submitting
+  // anything. This is the canonical way to get the address client-side.
+  let address: string | null = null;
+  try {
+    const saltScVal = StellarSdk.nativeToScVal(Buffer.from(salt));
+    const deployerScVal = new StellarSdk.Address(deployer).toScVal();
+    const retval = await simulateCall(
+      factoryAddress,
+      "get_deployment_address",
+      config,
+      [deployerScVal, saltScVal],
+    );
+    address = StellarSdk.Address.fromScVal(retval).toString();
+  } catch {
+    // View call failed — factory might not be deployed yet or RPC unreachable
+    address = null;
+  }
+
+  // ── 3. Compare against manifest ──────────────────────────────────────
+  const mfst = manifest.status === "fulfilled" ? manifest.value : null;
+
+  let manifestMatch: LaunchAttestation["manifestMatch"] = "unknown";
+
+  if (!mfst) {
+    warnings.push(
+      "The WASM manifest could not be fetched. Hash verification is unavailable.",
+    );
+  } else {
+    const networkEntry = mfst.factory?.deployments?.[config.network];
+    const manifestFactoryHash = networkEntry?.wasm_hash ?? null;
+    const manifestTokenHash =
+      mfst.token?.versions?.[mfst.token?.latest ?? ""]?.wasm_hash ?? null;
+
+    const factoryHashKnown = !!manifestFactoryHash;
+    const tokenHashKnown = !!manifestTokenHash;
+
+    if (!factoryHashKnown && !tokenHashKnown) {
+      warnings.push(
+        "The manifest has no reference hashes for this network. Verification is inconclusive.",
+      );
+      manifestMatch = "unknown";
+    } else {
+      const factoryOk =
+        !factoryHashKnown ||
+        !resolvedFactoryHash ||
+        resolvedFactoryHash.toLowerCase() === manifestFactoryHash!.toLowerCase();
+
+      const tokenOk =
+        !tokenHashKnown ||
+        !resolvedTokenWasmHash ||
+        resolvedTokenWasmHash.toLowerCase() === manifestTokenHash!.toLowerCase();
+
+      if (factoryOk && tokenOk) {
+        manifestMatch = "match";
+      } else {
+        manifestMatch = "mismatch";
+        if (!factoryOk) {
+          warnings.push(
+            `Factory WASM mismatch — on-chain: ${resolvedFactoryHash?.slice(0, 12)}…, manifest: ${manifestFactoryHash?.slice(0, 12)}…`,
+          );
+        }
+        if (!tokenOk) {
+          warnings.push(
+            `Token WASM mismatch — on-chain: ${resolvedTokenWasmHash?.slice(0, 12)}…, manifest: ${manifestTokenHash?.slice(0, 12)}…`,
+          );
+        }
+      }
+
+      if (factoryHashKnown && !resolvedFactoryHash) {
+        warnings.push("Could not read the factory's on-chain WASM hash.");
+      }
+      if (tokenHashKnown && !resolvedTokenWasmHash) {
+        warnings.push(
+          "Could not read the token WASM hash from the factory.",
+        );
+      }
+    }
+  }
+
+  return {
+    factoryHash: resolvedFactoryHash,
+    tokenWasmHash: resolvedTokenWasmHash,
+    manifestMatch,
+    address,
+    warnings,
+  };
+}

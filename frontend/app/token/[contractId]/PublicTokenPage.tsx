@@ -466,11 +466,18 @@ export default function PublicTokenPage({
             isLocked={tokenInfo.isLocked}
           />
           {process.env.NEXT_PUBLIC_FACTORY_ADDRESS && (
-            <ContractVerificationBadge
-              kind="factory"
-              contractId={process.env.NEXT_PUBLIC_FACTORY_ADDRESS}
-              networkConfig={networkConfig}
-            />
+            <>
+              <ContractVerificationBadge
+                kind="factory"
+                contractId={process.env.NEXT_PUBLIC_FACTORY_ADDRESS}
+                networkConfig={networkConfig}
+              />
+              <ContractVerificationBadge
+                kind="token-wasm"
+                contractId={process.env.NEXT_PUBLIC_FACTORY_ADDRESS}
+                networkConfig={networkConfig}
+              />
+            </>
           )}
           {tokenInfo.isLocked && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400">

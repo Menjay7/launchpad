@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 soroban-sdk = { version = "21.0.0", features = ["alloc"] }
 soroban-token = { path = "../token" }
+soroban-metadata-registry = { path = "../metadata-registry" }
 
 [dev-dependencies]
 soroban-sdk = { version = "21.0.0", features = ["testutils"] }

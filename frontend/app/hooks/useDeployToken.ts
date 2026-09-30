@@ -70,6 +70,24 @@ export interface DeployTokenParams {
   authorizationRequired?: boolean;
   authorizationRevocable?: boolean;
   complianceNodeAddress?: string;
+  /**
+   * Canonical metadata JSON to be keccak256-hashed into the registry in the
+   * same transaction as the deploy. `undefined` → `None` in the contract,
+   * which leaves `metadata_digest` as `None` in the registry record.
+   */
+  metadata?: string;
+  /**
+   * Optional `https://` or `ipfs://` URI forwarded to the token's own
+   * `contract_uri` storage so the document location is on-chain from day one.
+   */
+  contractUri?: string;
+  /**
+   * Pre-generated deploy salt. When supplied the factory will use this salt
+   * to derive the deterministic token address shown in the attestation panel
+   * (same bytes, same address). When omitted a fresh random salt is generated
+   * at deploy time.
+   */
+  salt?: Uint8Array;
 }
 
 export interface DeployTokenResult {
@@ -371,9 +389,11 @@ function buildTokenConfigScVals(
       authorization_required: params.authorizationRequired ?? false,
       authorization_revocable: params.authorizationRevocable ?? false,
       compliance_node: complianceNode,
+      contract_uri: params.contractUri ?? null,
       decimal: params.decimals,
       initial_supply: toBaseUnitsOrThrow(params.initialSupply, params.decimals, "initialSupply"),
       max_supply: maxSupply,
+      metadata: params.metadata ?? null,
       name: params.name,
       symbol: params.symbol,
     },
@@ -381,9 +401,11 @@ function buildTokenConfigScVals(
       type: {
         admin: ["symbol", "address"],
         compliance_node: ["symbol", "address"],
+        contract_uri: ["symbol", "string"],
         decimal: ["symbol", "u32"],
         initial_supply: ["symbol", "i128"],
         max_supply: ["symbol", "i128"],
+        metadata: ["symbol", "string"],
       },
     },
   );
@@ -432,7 +454,10 @@ async function deployViaFactory(
 ): Promise<DeployTokenResult> {
   const rpc = new StellarSdk.rpc.Server(ctx.rpcUrl);
   const contract = new StellarSdk.Contract(factoryAddress);
-  const salt = randomBytes(32);
+  // Use the caller-supplied salt (shown in the attestation panel) so the
+  // on-chain address matches the one the user saw before signing. Fall back
+  // to a fresh random salt when none was provided (e.g. legacy callers).
+  const salt = params.salt ? Buffer.from(params.salt) : randomBytes(32);
 
   const account = await loadSourceAccount(rpc, ctx.publicKey);
 

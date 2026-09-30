@@ -117,6 +117,27 @@ const deploySchema = z
 
 export type DeployFormData = z.infer<typeof deploySchema>;
 
+/**
+ * Serialise the optional metadata fields collected by StepMetadata into the
+ * canonical JSON blob the registry hashes on-chain.
+ *
+ * Only keys with non-empty values are included so the digest is stable — an
+ * empty string and an absent key would hash differently, and third-party
+ * verifiers should be able to reproduce it from the same form inputs.
+ */
+function buildMetadataJson(data: DeployFormData): string {
+  const doc: Record<string, string> = {
+    name: data.name,
+    symbol: data.symbol,
+  };
+  if (data.description?.trim()) doc.description = data.description.trim();
+  if (data.logoUrl?.trim()) doc.logoUrl = data.logoUrl.trim();
+  if (data.website?.trim()) doc.website = data.website.trim();
+  if (data.twitter?.trim()) doc.twitter = data.twitter.trim();
+  if (data.discord?.trim()) doc.discord = data.discord.trim();
+  return JSON.stringify(doc);
+}
+
 export default function DeployForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isDeploying, setIsDeploying] = useState(false);
@@ -131,6 +152,15 @@ export default function DeployForm() {
     warnings: string[];
   } | null>(null);
   const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
+  /** Pre-generated deploy salt, created when the user reaches the Review step.
+   *  Passed to StepReview (for attestation) and to deployToken (so the
+   *  on-chain address matches what was shown). */
+  const [deploySalt, setDeploySalt] = useState<Uint8Array | null>(null);
+  /** Whether the attestation panel has given a green light. Undefined means
+   *  not yet resolved; false means mismatch (Deploy button stays disabled). */
+  const [attestationOk, setAttestationOk] = useState<boolean | undefined>(
+    undefined,
+  );
 
   const router = useRouter();
   const { publicKey, connect } = useWallet();
@@ -191,6 +221,13 @@ export default function DeployForm() {
       
       if (nextStepNum === 4) {
         estimateFee();
+        // Generate a fresh salt for this deploy attempt. The same bytes are
+        // passed to the attestation panel (to show the deterministic address)
+        // and to deployToken (so the actual deploy lands at that address).
+        const saltBytes = new Uint8Array(32);
+        globalThis.crypto.getRandomValues(saltBytes);
+        setDeploySalt(saltBytes);
+        setAttestationOk(undefined);
       }
     }
   };
@@ -248,20 +285,6 @@ export default function DeployForm() {
    * Deployments are tracked on-chain via the factory, not in localStorage.
    */
   const recordDeployment = (data: DeployFormData, contractId: string) => {
-    // Save metadata client-side
-    try {
-      savePendingMetadata(data.symbol, {
-        description: data.description,
-        logoUrl: data.logoUrl,
-        website: data.website,
-        twitter: data.twitter,
-        discord: data.discord,
-      });
-    } catch {
-      // Ignore metadata save errors
-    }
-
-    // Set client-side deploy cooldown (per-wallet)
     try {
       const key = `soropad:lastDeploy:${publicKey ?? "anonymous"}`;
       localStorage.setItem(key, Date.now().toString());
@@ -281,6 +304,10 @@ export default function DeployForm() {
     });
 
     try {
+      // Build canonical metadata JSON from the form fields so the registry
+      // can commit to it in the same transaction as the deploy.
+      const metadataJson = buildMetadataJson(data);
+
       // Deploy the token contract with the form data
       const result = await deployToken({
         name: data.name,
@@ -292,6 +319,10 @@ export default function DeployForm() {
         authorizationRequired: data.authorizationRequired ?? false,
         authorizationRevocable: data.authorizationRevocable ?? false,
         complianceNodeAddress: data.complianceNodeAddress || undefined,
+        metadata: metadataJson,
+        // Pass the pre-generated salt so the on-chain address matches
+        // exactly what was shown in the attestation panel.
+        salt: deploySalt ?? undefined,
       });
 
       setPreflightResult({
@@ -451,6 +482,8 @@ export default function DeployForm() {
               estimatedFee={estimatedFee}
               feeEstimationLoading={feeEstimationLoading}
               feeEstimationError={feeEstimationError}
+              salt={deploySalt ?? undefined}
+              onAttestationResult={setAttestationOk}
             />
           )}
         </div>
@@ -567,7 +600,8 @@ export default function DeployForm() {
                   !isValid ||
                   isDeploying ||
                   !(preflightResult?.success ?? false) ||
-                  isCooldownActive
+                  isCooldownActive ||
+                  attestationOk === false
                 }
                 isLoading={isDeploying}
                 className="px-8 py-2"
