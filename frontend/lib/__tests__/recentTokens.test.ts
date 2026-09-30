@@ -1,9 +1,10 @@
 /**
- * Tests for the landing page's recent-launches feed (issue #411):
+ * Tests for the landing page's recent-launches feed (issues #411, #470):
  *  - lookback widens to the RPC's real retention window via getHealth(),
  *    and degrades gracefully to the fixed fallback when getHealth fails.
  *  - candidates are sorted by ledger (newest first) before truncation.
  *  - the activity-scoring batches run concurrently, not sequentially.
+ *  - only tokens in the factory registry are returned (issue #470).
  */
 
 import * as StellarSdk from "@stellar/stellar-sdk";
@@ -26,6 +27,8 @@ jest.mock("@stellar/stellar-sdk", () => {
   };
 });
 
+const MOCK_FACTORY_ADDRESS = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT";
+
 const mockConfig: NetworkConfig = {
   network: "testnet",
   rpcUrl: "https://soroban-testnet.stellar.org",
@@ -43,13 +46,66 @@ function makeInitEvent(contractId: string, ledger: number) {
   };
 }
 
+/**
+ * Build a simulateTransaction mock that answers factory registry calls.
+ *
+ * `fetchFactoryRegistry` always calls the factory in the same order:
+ *   call 1  → get_deployment_count  (returns registryIds.length as u32)
+ *   call 2+ → get_deployments_paginated  (returns address slice)
+ *
+ * Using call-order routing keeps the mock simple and avoids introspecting
+ * the XDR-encoded Transaction object.
+ *
+ * The response shape must satisfy `StellarSdk.rpc.Api.isSimulationSuccess`,
+ * which checks for `"transactionData" in sim`.  We also include `result` so
+ * `fetchFactoryRegistry` can read `retval`.
+ */
+function makeSimulateMock(registryIds: string[]) {
+  let callCount = 0;
+  return jest.fn().mockImplementation(async () => {
+    callCount += 1;
+
+    // Minimal shape that passes isSimulationSuccess ("transactionData" in sim)
+    // and carries a result.retval the caller can decode with scValToNative.
+    const base = {
+      transactionData: {},   // presence is all isSimulationSuccess checks
+      minResourceFee: "0",
+      events: [],
+      _parsed: true,
+      id: "mock",
+      latestLedger: 100_000,
+    };
+
+    if (callCount === 1) {
+      // First simulate call is always get_deployment_count.
+      return {
+        ...base,
+        result: {
+          auth: [],
+          retval: StellarSdk.nativeToScVal(registryIds.length, { type: "u32" }),
+        },
+      };
+    }
+    // Subsequent calls are get_deployments_paginated pages.
+    // For test purposes we return all ids in one shot (registryIds.length <= 100).
+    return {
+      ...base,
+      result: {
+        auth: [],
+        retval: StellarSdk.nativeToScVal(registryIds),
+      },
+    };
+  });
+}
+
 /** Builds a Server mock; getEvents is a jest.fn() the caller configures per-test. */
 function mockServer(options: {
   latestLedger?: number;
   health?: { oldestLedger?: number; ledgerRetentionWindow?: number } | "unsupported";
   getEvents: jest.Mock;
+  registryIds?: string[];
 }) {
-  const { latestLedger = 100_000, health, getEvents } = options;
+  const { latestLedger = 100_000, health, getEvents, registryIds = [] } = options;
 
   const getHealth =
     health === "unsupported"
@@ -65,6 +121,7 @@ function mockServer(options: {
     getLatestLedger: jest.fn().mockResolvedValue({ sequence: latestLedger }),
     getHealth,
     getEvents,
+    simulateTransaction: makeSimulateMock(registryIds),
   }));
 }
 
@@ -86,7 +143,7 @@ describe("fetchRecentTokens — retention window", () => {
       getEvents,
     });
 
-    await fetchRecentTokens(mockConfig);
+    await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
 
     // First call is the init-event scan; startLedger should be the probed
     // oldestLedger (50,000), far wider than the old fixed 17,280-ledger window.
@@ -102,7 +159,7 @@ describe("fetchRecentTokens — retention window", () => {
       getEvents,
     });
 
-    await fetchRecentTokens(mockConfig);
+    await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
 
     const firstCallArgs = getEvents.mock.calls[0][0];
     // latestLedger (200,000) - FALLBACK_LOOKBACK_LEDGERS (17,280)
@@ -117,10 +174,67 @@ describe("fetchRecentTokens — retention window", () => {
       getEvents,
     });
 
-    await fetchRecentTokens(mockConfig);
+    await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
 
     const firstCallArgs = getEvents.mock.calls[0][0];
     expect(firstCallArgs.startLedger).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("fetchRecentTokens — factory registry filter (issue #470)", () => {
+  it("returns an empty result when the init event comes from a contract not in the factory registry", async () => {
+    // CONTRACT_FOREIGN emits an init event but is NOT in the factory registry,
+    // simulating a third-party SEP-41 token or another project's contract.
+    const foreignContract = "CFOREIGN_NOT_SOROPAD_TOKEN_AAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const initEvents = [makeInitEvent(foreignContract, 100)];
+
+    const getEvents = jest.fn().mockResolvedValue({ events: initEvents });
+
+    // The factory registry is empty — it knows nothing about this contract.
+    mockServer({ getEvents, registryIds: [] });
+
+    const result = await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
+
+    expect(result).toEqual([]);
+    // fetchTokenInfo must never be called for a non-registry contract.
+    expect(mockFetchTokenInfo).not.toHaveBeenCalled();
+  });
+
+  it("returns only the subset of event contracts that are in the factory registry", async () => {
+    const soropadToken = "CSOROPAD_TOKEN_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const foreignToken = "CFOREIGN_NOT_SOROPAD_TOKEN_AAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+    const initEvents = [
+      makeInitEvent(soropadToken, 200),
+      makeInitEvent(foreignToken, 201), // newer, but not in registry
+    ];
+
+    const getEvents = jest
+      .fn()
+      .mockResolvedValueOnce({ events: initEvents }) // init scan
+      .mockResolvedValue({ events: [] }); // scoring batches
+
+    // Only soropadToken is known to the factory.
+    mockServer({ getEvents, registryIds: [soropadToken] });
+
+    const result = await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].contractId).toBe(soropadToken);
+    // The foreign contract must never be hydrated.
+    expect(mockFetchTokenInfo).not.toHaveBeenCalledWith(foreignToken, expect.anything());
+  });
+
+  it("returns an empty result when no factoryAddress is configured", async () => {
+    const initEvents = [makeInitEvent("CSOME_TOKEN_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 100)];
+    const getEvents = jest.fn().mockResolvedValue({ events: initEvents });
+    mockServer({ getEvents });
+
+    // No factoryAddress passed — the registry cannot be consulted.
+    const result = await fetchRecentTokens(mockConfig, "");
+
+    expect(result).toEqual([]);
+    expect(mockFetchTokenInfo).not.toHaveBeenCalled();
   });
 });
 
@@ -135,14 +249,17 @@ describe("fetchRecentTokens — sort before truncate", () => {
       return makeInitEvent(`CONTRACT_${i}`, ledger);
     });
 
+    // All 25 contracts are in the factory registry.
+    const registryIds = initEvents.map((e) => e.contractId);
+
     const getEvents = jest
       .fn()
       .mockResolvedValueOnce({ events: initEvents }) // init scan
       .mockResolvedValue({ events: [] }); // scoring batches
 
-    mockServer({ getEvents });
+    mockServer({ getEvents, registryIds });
 
-    const result = await fetchRecentTokens(mockConfig);
+    const result = await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
 
     // The 20 candidates actually fetched via fetchTokenInfo should be exactly
     // the 20 with the highest ledger numbers (25 down to 6), not whichever 20
@@ -171,6 +288,9 @@ describe("fetchRecentTokens — concurrent scoring batches", () => {
       makeInitEvent(`CONTRACT_${i}`, 100 + i),
     );
 
+    // All 12 contracts are registered in the factory.
+    const registryIds = initEvents.map((e) => e.contractId);
+
     let concurrentInFlight = 0;
     let maxConcurrentObserved = 0;
 
@@ -187,9 +307,9 @@ describe("fetchRecentTokens — concurrent scoring batches", () => {
       return { events: [] };
     });
 
-    mockServer({ getEvents });
+    mockServer({ getEvents, registryIds });
 
-    await fetchRecentTokens(mockConfig);
+    await fetchRecentTokens(mockConfig, MOCK_FACTORY_ADDRESS);
 
     // 12 candidates in batches of 5 -> 3 scoring batches (5, 5, 2). If they
     // ran sequentially, maxConcurrentObserved would never exceed 1.

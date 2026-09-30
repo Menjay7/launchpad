@@ -22,6 +22,7 @@ const FALLBACK_LOOKBACK_LEDGERS = 17280; // ~24 hours at ~5s per ledger
 const LOOKBACK_LEDGERS = LEDGERS_PER_DAY; // ~24 hours at ~5s per ledger
 const MAX_CANDIDATES = 20;
 const MAX_RESULTS = 12;
+const FACTORY_PAGE_SIZE = 100;
 
 async function safeGetEvents(
   getEvents: (req: unknown) => Promise<unknown>,
@@ -33,6 +34,90 @@ async function safeGetEvents(
     return Array.isArray(obj.events) ? (obj.events as RpcEvent[]) : [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Fetch every contract address registered in the SoroPad factory and return
+ * them as a Set for O(1) membership checks.
+ *
+ * Returns an empty Set when `factoryAddress` is blank or any RPC call fails,
+ * so the caller degrades gracefully rather than hard-failing the feed.
+ */
+export async function fetchFactoryRegistry(
+  config: NetworkConfig,
+  factoryAddress: string,
+): Promise<Set<string>> {
+  if (!factoryAddress) return new Set();
+
+  try {
+    const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
+    // A random keypair is sufficient for read-only simulation — no funded
+    // source account is required.
+    const account = new StellarSdk.Account(
+      StellarSdk.Keypair.random().publicKey(),
+      "0",
+    );
+
+    // 1. Get the total deployment count.
+    const countTx = new StellarSdk.TransactionBuilder(account, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: config.passphrase,
+    })
+      .addOperation(
+        new StellarSdk.Contract(factoryAddress).call("get_deployment_count"),
+      )
+      .setTimeout(30)
+      .build();
+
+    const countSim = await rpc.simulateTransaction(countTx);
+    if (
+      !StellarSdk.rpc.Api.isSimulationSuccess(countSim) ||
+      !countSim.result
+    ) {
+      return new Set();
+    }
+
+    const count = Number(
+      StellarSdk.scValToNative(countSim.result.retval),
+    );
+    if (count === 0) return new Set();
+
+    // 2. Page through the registry and collect all deployed addresses.
+    const registry = new Set<string>();
+    for (let start = 0; start < count; start += FACTORY_PAGE_SIZE) {
+      const limit = Math.min(FACTORY_PAGE_SIZE, count - start);
+      const pageTx = new StellarSdk.TransactionBuilder(account, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: config.passphrase,
+      })
+        .addOperation(
+          new StellarSdk.Contract(factoryAddress).call(
+            "get_deployments_paginated",
+            StellarSdk.nativeToScVal(start, { type: "u32" }),
+            StellarSdk.nativeToScVal(limit, { type: "u32" }),
+          ),
+        )
+        .setTimeout(30)
+        .build();
+
+      const pageSim = await rpc.simulateTransaction(pageTx);
+      if (
+        StellarSdk.rpc.Api.isSimulationSuccess(pageSim) &&
+        pageSim.result
+      ) {
+        const addresses = StellarSdk.scValToNative(
+          pageSim.result.retval,
+        ) as string[];
+        for (const addr of addresses) {
+          registry.add(addr);
+        }
+      }
+    }
+
+    return registry;
+  } catch {
+    return new Set();
   }
 }
 
@@ -60,6 +145,7 @@ async function resolveStartLedger(
 
 export async function fetchRecentTokens(
   config: NetworkConfig,
+  factoryAddress?: string,
 ): Promise<RecentToken[]> {
   const rpc = new StellarSdk.rpc.Server(config.rpcUrl);
   const getEvents = (
@@ -86,10 +172,32 @@ export async function fetchRecentTokens(
     }
   }
 
+  // Fetch the factory's on-chain registry so the feed only shows tokens that
+  // SoroPad deployed. The unnamespaced "init" topic matches every SEP-41
+  // token on the network, so without this filter the widget would display
+  // unrelated contracts. We intersect here — before hydrating any contract —
+  // so no RPC calls are wasted on non-SoroPad tokens.
+  //
+  // If `factoryAddress` is not configured, or the registry fetch fails, the
+  // Set will be empty and *all* event candidates will be filtered out,
+  // returning an empty feed rather than silently showing unrelated tokens.
+  const factoryRegistry = await fetchFactoryRegistry(
+    config,
+    factoryAddress ?? "",
+  );
+
+  const filteredSeen = factoryRegistry.size > 0
+    ? new Map(
+        [...seen.entries()].filter(([contractId]) =>
+          factoryRegistry.has(contractId),
+        ),
+      )
+    : new Map<string, RpcEvent>();
+
   // Sort by ledger descending *before* truncating, so a window with more than
   // MAX_CANDIDATES launches keeps the newest ones rather than whichever
   // MAX_CANDIDATES the RPC happened to return first.
-  const candidates = Array.from(seen.entries())
+  const candidates = Array.from(filteredSeen.entries())
     .sort(([, a], [, b]) => (b.ledger ?? 0) - (a.ledger ?? 0))
     .slice(0, MAX_CANDIDATES);
   if (candidates.length === 0) return [];

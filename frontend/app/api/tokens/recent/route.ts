@@ -34,7 +34,8 @@ export async function GET(request: Request) {
 
   try {
     const config = NETWORKS[network];
-    const tokens = await fetchRecentTokens(config);
+    const factoryAddress = process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "";
+    const tokens = await fetchRecentTokens(config, factoryAddress);
 
     cache.set(network, {
       data: tokens,
